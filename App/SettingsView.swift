@@ -14,10 +14,12 @@ struct SettingsView: View {
                 .tabItem { Label("Hotkeys",  systemImage: "keyboard") }
             OutputTab()
                 .tabItem { Label("Output",   systemImage: "square.and.arrow.down") }
+            PipelineTab()
+                .tabItem { Label("Pipeline", systemImage: "arrow.trianglehead.2.clockwise") }
             RegionsTab()
                 .tabItem { Label("Regions",  systemImage: "rectangle.dashed") }
         }
-        .frame(width: 540, height: 380)
+        .frame(width: 540, height: 420)
     }
 }
 
@@ -122,6 +124,71 @@ private struct OutputTab: View {
         panel.canCreateDirectories = true
         panel.prompt = "Select"
         if panel.runModal() == .OK, let url = panel.url { directory = url }
+    }
+}
+
+// MARK: - Pipeline Tab
+
+private struct PipelineTab: View {
+    @Default(.afterCaptureOptions) var options
+
+    // Groups for display
+    private let outputTasks: [AfterCaptureOption]    = [.copyToClipboard, .saveToFile]
+    private let postSaveTasks: [AfterCaptureOption]  = [.revealInFinder, .copyFilePath, .openInViewer]
+    private let notifyTasks: [AfterCaptureOption]    = [.showNotification]
+
+    var body: some View {
+        Form {
+            Section("Output") {
+                ForEach(outputTasks, id: \.self) { opt in
+                    PipelineRow(option: opt, options: $options)
+                }
+            }
+
+            Section {
+                ForEach(postSaveTasks, id: \.self) { opt in
+                    PipelineRow(option: opt, options: $options)
+                        .disabled(!options.contains(.saveToFile))
+                }
+                if !options.contains(.saveToFile) {
+                    Text("Enable \"Save image to file\" to use these")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } header: { Text("After Save") }
+
+            Section("Notification") {
+                ForEach(notifyTasks, id: \.self) { opt in
+                    PipelineRow(option: opt, options: $options)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+    }
+}
+
+private struct PipelineRow: View {
+    let option: AfterCaptureOption
+    @Binding var options: [AfterCaptureOption]
+
+    private var isOn: Binding<Bool> {
+        Binding(
+            get: { options.contains(option) },
+            set: { enabled in
+                if enabled { if !options.contains(option) { options.append(option) } }
+                else { options.removeAll { $0 == option } }
+            }
+        )
+    }
+
+    var body: some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(option.title)
+                Text(option.description)
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

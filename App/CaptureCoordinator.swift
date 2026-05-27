@@ -108,14 +108,41 @@ final class CaptureCoordinator: ObservableObject {
 
     private func finalize(image: CGImage, sourceRect: CGRect, scaleFactor: CGFloat) async {
         do {
+            let options  = Defaults[.afterCaptureOptions]
+            let optSet   = Set(options)
+            let directory = Defaults[.screenshotsDirectory]
+
+            // Build ordered output tasks
+            var outputs: [any OutputTask] = []
+            if optSet.contains(.copyToClipboard) {
+                outputs.append(ClipboardOutput())
+            }
+            if optSet.contains(.saveToFile) {
+                createDirectoryIfNeeded(directory)
+                outputs.append(LocalFileOutput(directory: directory))
+            }
+
+            // Build after-output tasks (same order as options list for predictability)
+            var afterOutputs: [any AfterOutputTask] = []
+            for option in options {
+                switch option {
+                case .revealInFinder: afterOutputs.append(RevealInFinderTask())
+                case .copyFilePath:   afterOutputs.append(CopyFilePathTask())
+                case .openInViewer:   afterOutputs.append(OpenInViewerTask())
+                default: break
+                }
+            }
+
             let screenshot = Screenshot(image: image, sourceRect: sourceRect, scaleFactor: scaleFactor)
-            let directory  = Defaults[.screenshotsDirectory]
-            createDirectoryIfNeeded(directory)
             let ctx = try await pipeline.run(
                 preCapture: screenshot,
-                outputs: [ClipboardOutput(), LocalFileOutput(directory: directory)]
+                outputs: outputs,
+                afterOutput: afterOutputs
             )
-            thumbnail.show(image: image, savedAt: ctx.outputURLs.first)
+
+            if optSet.contains(.showNotification) {
+                thumbnail.show(image: image, savedAt: ctx.outputURLs.first)
+            }
             playShutterSound()
         } catch { showError(error) }
     }

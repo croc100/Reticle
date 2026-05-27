@@ -76,6 +76,14 @@ public extension Defaults.Keys {
 
     /// User-saved named regions.
     static let savedRegions = Key<[SavedRegion]>("savedRegions", default: [])
+
+    // MARK: After Capture pipeline
+
+    /// Ordered list of tasks to execute after every capture.
+    static let afterCaptureOptions = Key<[AfterCaptureOption]>(
+        "afterCaptureOptions",
+        default: [.copyToClipboard, .saveToFile, .showNotification]
+    )
 }
 
 // MARK: - Carbon modifier helpers
