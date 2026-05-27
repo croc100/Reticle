@@ -1,0 +1,65 @@
+# ── Xcode ────────────────────────────────────────────────────────────────────
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+
+*.xcworkspace
+!default.xcworkspace
+
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Instruments
+timeline.xctimeline
+playground.xcworkspace
+
+# ── Swift Package Manager ────────────────────────────────────────────────────
+.build/
+.swiftpm/xcode/
+# Package.resolved is intentionally tracked to lock dependency versions
+
+
+# ── CocoaPods ────────────────────────────────────────────────────────────────
+Pods/
+*.xcworkspace
+
+# ── Carthage ─────────────────────────────────────────────────────────────────
+Carthage/Build/
+
+# ── macOS system files ───────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# ── Derived data & archives ──────────────────────────────────────────────────
+DerivedData/
+*.xcarchive
+build/
+dist/
+
+# ── Editor cruft ─────────────────────────────────────────────────────────────
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+
+# ── Secrets / env ────────────────────────────────────────────────────────────
+.env
+.env.*
+Secrets.swift
+GoogleService-Info.plist
