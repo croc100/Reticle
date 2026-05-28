@@ -44,18 +44,16 @@ final class AnnotationCanvasView: NSView {
 
         // 2. Committed annotations
         for ann in vm.annotations {
-            ann.draw(in: bounds)
+            ann.drawRotated(in: bounds)
             if ann === selectedAnnotation { drawSelectionHalo(for: ann) }
         }
 
         // 3. In-progress annotation
-        inProgressAnnotation?.draw(in: bounds)
+        inProgressAnnotation?.drawRotated(in: bounds)
     }
 
     private func drawSelectionHalo(for ann: Annotation) {
         // Draw a subtle blue border around the annotation bounding box.
-        // For simplicity, use a 32×32 rect around the hit point — each subclass
-        // could expose a `boundingRect` but this is good enough for v0.2.
         NSColor.systemBlue.withAlphaComponent(0.5).setStroke()
         let path = NSBezierPath()
         path.lineWidth = 1

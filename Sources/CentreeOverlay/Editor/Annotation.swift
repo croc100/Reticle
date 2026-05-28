@@ -38,6 +38,22 @@ class Annotation: NSObject {
     var color: NSColor
     var lineWidth: CGFloat
 
+    /// Clockwise rotation in radians (visual, in the flipped NSView coordinate system).
+    var rotation: CGFloat = 0
+
+    /// Whether this annotation supports the rotation handle in the selection UI.
+    /// Pixel-region annotations (blur, pixelate, spotlight) and freehand paths return false.
+    var isRotatable: Bool { true }
+
+    /// The point around which `rotation` is applied.  Defaults to the center of `boundingRect`.
+    var rotationCenter: NSPoint {
+        guard let r = boundingRect else { return .zero }
+        return NSPoint(x: r.midX, y: r.midY)
+    }
+
+    /// Axis-aligned bounding rect in view coordinates.  Override in subclasses that store a rect.
+    var boundingRect: NSRect? { nil }
+
     init(color: NSColor, lineWidth: CGFloat) {
         self.color = color
         self.lineWidth = lineWidth
@@ -45,12 +61,28 @@ class Annotation: NSObject {
 
     func draw(in rect: NSRect) {}
     func hitTest(_ point: NSPoint) -> Bool { false }
+
+    /// Draws the annotation with its `rotation` transform applied via NSAffineTransform
+    /// (which correctly accounts for the flipped NSView coordinate system).
+    func drawRotated(in dirtyRect: NSRect) {
+        guard isRotatable, rotation != 0 else { draw(in: dirtyRect); return }
+        NSGraphicsContext.saveGraphicsState()
+        let c = rotationCenter
+        let t = NSAffineTransform()
+        t.translateX(by: c.x, yBy: c.y)
+        t.rotate(byRadians: rotation)
+        t.translateX(by: -c.x, yBy: -c.y)
+        t.concat()
+        draw(in: dirtyRect)
+        NSGraphicsContext.restoreGraphicsState()
+    }
 }
 
 // MARK: - Rectangle
 
 final class RectAnnotation: Annotation {
     var rect: NSRect
+    override var boundingRect: NSRect? { rect }
 
     init(rect: NSRect, color: NSColor, lineWidth: CGFloat) {
         self.rect = rect
@@ -74,6 +106,7 @@ final class RectAnnotation: Annotation {
 
 final class EllipseAnnotation: Annotation {
     var rect: NSRect
+    override var boundingRect: NSRect? { rect }
 
     init(rect: NSRect, color: NSColor, lineWidth: CGFloat) {
         self.rect = rect
@@ -95,9 +128,11 @@ final class EllipseAnnotation: Annotation {
 
 // MARK: - Line
 
+// Lines and arrows use endpoint handles; rotation is not offered for these.
 final class LineAnnotation: Annotation {
     var start: NSPoint
     var end: NSPoint
+    override var isRotatable: Bool { false }
 
     init(start: NSPoint, end: NSPoint, color: NSColor, lineWidth: CGFloat) {
         self.start = start; self.end = end
@@ -123,6 +158,7 @@ final class LineAnnotation: Annotation {
 final class ArrowAnnotation: Annotation {
     var start: NSPoint
     var end: NSPoint
+    override var isRotatable: Bool { false }
 
     init(start: NSPoint, end: NSPoint, color: NSColor, lineWidth: CGFloat) {
         self.start = start; self.end = end
@@ -152,6 +188,7 @@ final class ArrowAnnotation: Annotation {
 
 final class FreehandArrowAnnotation: Annotation {
     var points: [NSPoint] = []
+    override var isRotatable: Bool { false }
 
     override init(color: NSColor, lineWidth: CGFloat) { super.init(color: color, lineWidth: lineWidth) }
 
@@ -213,6 +250,10 @@ final class TextAnnotation: Annotation {
 
     private var attrs: [NSAttributedString.Key: Any] {
         [.font: NSFont.systemFont(ofSize: fontSize, weight: .semibold), .foregroundColor: color]
+    }
+    override var boundingRect: NSRect? {
+        let sz = (text as NSString).size(withAttributes: attrs)
+        return NSRect(origin: origin, size: sz)
     }
 
     override func draw(in _: NSRect) {
@@ -297,6 +338,7 @@ final class TextBackgroundAnnotation: Annotation {
 
 final class HighlightAnnotation: Annotation {
     var rect: NSRect
+    override var boundingRect: NSRect? { rect }
     /// Opacity of the highlight fill (0.1 – 0.85). Default 0.35 matches ShareX.
     var opacity: CGFloat
 
@@ -317,6 +359,7 @@ final class HighlightAnnotation: Annotation {
 
 final class PenAnnotation: Annotation {
     var points: [NSPoint] = []
+    override var isRotatable: Bool { false }
     /// 0 = no smoothing, 1-10 = increasing weighted smoothing (matches ShareX FreehandSmoothing)
     var smoothing: Int = 3
 
@@ -438,6 +481,7 @@ final class StepAnnotation: Annotation {
 
 final class BlackoutAnnotation: Annotation {
     var rect: NSRect
+    override var boundingRect: NSRect? { rect }
 
     init(rect: NSRect) {
         self.rect = rect
@@ -457,6 +501,7 @@ final class BlackoutAnnotation: Annotation {
 final class BlurAnnotation: Annotation {
     var rect: NSRect
     var radius: CGFloat
+    override var isRotatable: Bool { false }
 
     init(rect: NSRect, radius: CGFloat = 20) {
         self.rect = rect; self.radius = radius
@@ -477,6 +522,7 @@ final class BlurAnnotation: Annotation {
 final class PixelateAnnotation: Annotation {
     var rect: NSRect
     var pixelSize: CGFloat
+    override var isRotatable: Bool { false }
 
     init(rect: NSRect, pixelSize: CGFloat = 12) {
         self.rect = rect; self.pixelSize = pixelSize
@@ -495,6 +541,7 @@ final class PixelateAnnotation: Annotation {
 
 final class SpeechBalloonAnnotation: Annotation {
     var rect: NSRect
+    override var boundingRect: NSRect? { rect }
     var text: String
     var fontSize: CGFloat
 
@@ -550,6 +597,7 @@ final class SpeechBalloonAnnotation: Annotation {
 
 final class SpotlightAnnotation: Annotation {
     var rect: NSRect
+    override var isRotatable: Bool { false }
 
     init(rect: NSRect, color: NSColor = .white, lineWidth: CGFloat = 2) {
         self.rect = rect
@@ -566,6 +614,7 @@ final class SpotlightAnnotation: Annotation {
 
 final class MagnifyAnnotation: Annotation {
     var rect: NSRect
+    override var isRotatable: Bool { false }   // pixel-space content; rotation is disorienting
     var scale: CGFloat   // 2 = 2× zoom
 
     init(rect: NSRect, scale: CGFloat = 2, color: NSColor, lineWidth: CGFloat) {
@@ -610,6 +659,10 @@ final class EmojiAnnotation: Annotation {
     private var attrs: [NSAttributedString.Key: Any] {
         [.font: NSFont.systemFont(ofSize: fontSize)]
     }
+    override var boundingRect: NSRect? {
+        let sz = (emoji as NSString).size(withAttributes: attrs)
+        return NSRect(origin: origin, size: sz)
+    }
 
     override func draw(in _: NSRect) {
         guard !emoji.isEmpty else { return }
@@ -627,6 +680,9 @@ final class EmojiAnnotation: Annotation {
 final class CursorAnnotation: Annotation {
     var origin: NSPoint
     var size: CGFloat
+    override var boundingRect: NSRect? {
+        NSRect(x: origin.x, y: origin.y, width: size, height: size)
+    }
 
     init(origin: NSPoint, size: CGFloat = 32) {
         self.origin = origin; self.size = size
@@ -648,6 +704,7 @@ final class ImageAnnotation: Annotation {
     var origin: NSPoint
     var nsImage: NSImage
     var size: NSSize
+    override var boundingRect: NSRect? { NSRect(origin: origin, size: size) }
 
     init(origin: NSPoint, image: NSImage) {
         self.origin = origin
@@ -675,6 +732,7 @@ final class ImageAnnotation: Annotation {
 final class RulerAnnotation: Annotation {
     var start: NSPoint
     var end: NSPoint
+    override var isRotatable: Bool { false }
     /// Display scale factor (points → pixels) used to annotate physical pixel count.
     var scaleFactor: CGFloat
 

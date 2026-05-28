@@ -172,7 +172,7 @@ final class OverlayView: NSView {
         if let blur = ann as? BlurAnnotation      { drawBlur(blur);     return }
         if let pix  = ann as? PixelateAnnotation  { drawPixelate(pix);  return }
         if let mag  = ann as? MagnifyAnnotation   { drawMagnify(mag);   return }
-        ann.draw(in: bounds)
+        ann.drawRotated(in: bounds)
     }
 
     private func drawBlur(_ ann: BlurAnnotation) {
@@ -381,16 +381,60 @@ final class OverlayView: NSView {
         ctx.setLineWidth(1)
 
         if let br = annotationBoundingRect(ann) {
-            // Dashed selection border
-            ctx.setLineDash(phase: 0, lengths: [5, 3])
-            ctx.stroke(br.insetBy(dx: -1, dy: -1))
-            ctx.setLineDash(phase: 0, lengths: [])
-            // 8 resize handles
-            for hr in handleRects(for: br) {
-                ctx.fill(hr)
-                ctx.setStrokeColor(NSColor.systemBlue.cgColor)
-                ctx.stroke(hr)
+            let c = ann.rotationCenter
+            let θ = ann.rotation
+
+            // Dashed selection border — drawn as the rotated quad
+            if θ == 0 {
+                ctx.setLineDash(phase: 0, lengths: [5, 3])
+                ctx.stroke(br.insetBy(dx: -1, dy: -1))
+                ctx.setLineDash(phase: 0, lengths: [])
+            } else {
+                // Rotate the four corners and draw the polygon
+                let corners = [
+                    CGPoint(x: br.minX - 1, y: br.minY - 1),
+                    CGPoint(x: br.maxX + 1, y: br.minY - 1),
+                    CGPoint(x: br.maxX + 1, y: br.maxY + 1),
+                    CGPoint(x: br.minX - 1, y: br.maxY + 1),
+                ]
+                let rotated = corners.map { rotatePoint(NSPoint(x: $0.x, y: $0.y), around: c, by: θ) }
+                ctx.setLineDash(phase: 0, lengths: [5, 3])
+                ctx.beginPath()
+                ctx.move(to: rotated[0]); rotated[1...].forEach { ctx.addLine(to: $0) }
+                ctx.closePath(); ctx.strokePath()
+                ctx.setLineDash(phase: 0, lengths: [])
             }
+
+            // 8 resize handles (at rotated positions)
+            for hr in handleRects(for: br) {
+                let rotatedCenter = rotatePoint(NSPoint(x: hr.midX, y: hr.midY), around: c, by: θ)
+                let size: CGFloat = hr.width
+                let rhr = CGRect(x: rotatedCenter.x - size/2, y: rotatedCenter.y - size/2,
+                                 width: size, height: size)
+                ctx.fill(rhr)
+                ctx.setStrokeColor(NSColor.systemBlue.cgColor)
+                ctx.stroke(rhr)
+                ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.8).cgColor)
+            }
+
+            // Rotation handle — circle above the top-centre, offset by rotation
+            if ann.isRotatable {
+                let topCenter = NSPoint(x: br.midX, y: br.minY - 28)
+                let rh = rotatePoint(topCenter, around: c, by: θ)
+                let stemEnd = rotatePoint(NSPoint(x: br.midX, y: br.minY), around: c, by: θ)
+                // Stem line
+                ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.7).cgColor)
+                ctx.setLineWidth(1)
+                ctx.beginPath(); ctx.move(to: stemEnd); ctx.addLine(to: rh); ctx.strokePath()
+                // Handle circle
+                let hr = CGRect(x: rh.x - 7, y: rh.y - 7, width: 14, height: 14)
+                ctx.setFillColor(NSColor.systemOrange.cgColor)
+                ctx.fillEllipse(in: hr)
+                ctx.setStrokeColor(NSColor.white.cgColor)
+                ctx.setLineWidth(1.5)
+                ctx.strokeEllipse(in: hr)
+            }
+
         } else if let line = ann as? LineAnnotation {
             for pt in [line.start, line.end] {
                 ctx.fill(CGRect(x: pt.x-5, y: pt.y-5, width: 10, height: 10))
@@ -401,6 +445,40 @@ final class OverlayView: NSView {
             }
         }
         ctx.restoreGState()
+    }
+
+    /// Hit-tests an annotation accounting for its rotation.
+    private func hitTestAnnotation(_ ann: Annotation, point: NSPoint) -> Bool {
+        guard ann.isRotatable, ann.rotation != 0 else { return ann.hitTest(point) }
+        let local = unrotatePoint(point, around: ann.rotationCenter, by: ann.rotation)
+        return ann.hitTest(local)
+    }
+
+    /// Rotates `point` around `center` by `theta` radians clockwise in screen space
+    /// (where y=0 is the top, consistent with NSAffineTransform in a flipped NSView).
+    private func rotatePoint(_ point: NSPoint, around center: NSPoint, by theta: CGFloat) -> CGPoint {
+        guard theta != 0 else { return point }
+        let dx = point.x - center.x, dy = point.y - center.y
+        let cos = Foundation.cos(theta), sin = Foundation.sin(theta)
+        return CGPoint(
+            x: center.x + dx * cos + dy * sin,
+            y: center.y - dx * sin + dy * cos
+        )
+    }
+
+    /// Inverse of `rotatePoint` — used to un-rotate a hit-test point into the annotation's local space.
+    private func unrotatePoint(_ point: NSPoint, around center: NSPoint, by theta: CGFloat) -> NSPoint {
+        let r = rotatePoint(point, around: center, by: -theta)
+        return NSPoint(x: r.x, y: r.y)
+    }
+
+    /// Transforms a delta vector (dx, dy) from screen space into the annotation's unrotated local space.
+    /// Used when resizing a rotated annotation via a handle drag.
+    private func unrotateVec(dx: CGFloat, dy: CGFloat, by theta: CGFloat) -> (dx: CGFloat, dy: CGFloat) {
+        guard theta != 0 else { return (dx, dy) }
+        let cos = Foundation.cos(theta), sin = Foundation.sin(theta)
+        // Inverse of the clockwise screen-space rotation formula
+        return (dx: dx * cos - dy * sin, dy: dx * sin + dy * cos)
     }
 
     private func applyRectResize(ann: Annotation, handle: Int, dx: CGFloat, dy: CGFloat,
@@ -612,11 +690,21 @@ final class OverlayView: NSView {
         case .region:
             liveSelectionRect = nil; hoveredWindowRect = nil
         case .select:
-            // Check if clicking on a resize/endpoint handle of the currently selected annotation
+            // Check if clicking on a resize/endpoint/rotation handle of the currently selected annotation
             activeHandle = nil
             if let sel = selectedAnnotation {
                 if let br = annotationBoundingRect(sel) {
-                    if let hi = handleRects(for: br).firstIndex(where: { $0.contains(pt) }) {
+                    let c = sel.rotationCenter; let θ = sel.rotation
+                    // Rotation handle check (index 20) — must come before resize handles
+                    if sel.isRotatable {
+                        let rotHandleCenter = rotatePoint(NSPoint(x: br.midX, y: br.minY - 28), around: c, by: θ)
+                        if hypot(pt.x - rotHandleCenter.x, pt.y - rotHandleCenter.y) < 10 {
+                            activeHandle = 20; moveOrigin = pt; needsDisplay = true; return
+                        }
+                    }
+                    // Resize handle check — un-rotate the click into annotation local space first
+                    let localPt = unrotatePoint(pt, around: c, by: θ)
+                    if let hi = handleRects(for: br).firstIndex(where: { $0.contains(localPt) }) {
                         activeHandle = hi; moveOrigin = pt; needsDisplay = true; return
                     }
                 } else if let line = sel as? LineAnnotation {
@@ -633,7 +721,8 @@ final class OverlayView: NSView {
                     }
                 }
             }
-            let hit = vm.annotations.last(where: { $0.hitTest(pt) })
+            // Hit test with rotation-aware lookup
+            let hit = vm.annotations.last(where: { hitTestAnnotation($0, point: pt) })
             if event.modifierFlags.contains(.shift), let h = hit {
                 // Shift+click: toggle membership in multi-selection
                 let id = ObjectIdentifier(h)
@@ -736,9 +825,18 @@ final class OverlayView: NSView {
             guard let ann = selectedAnnotation, let o = moveOrigin else { break }
             let dx = cur.x - o.x; let dy = cur.y - o.y; moveOrigin = cur
             if let h = activeHandle {
-                if h < 10 { applyRectResize(ann: ann, handle: h, dx: dx, dy: dy,
-                                            proportional: event.modifierFlags.contains(.shift)) }
-                else       { applyLineResize(ann: ann, endpointIdx: h - 10, dx: dx, dy: dy) }
+                if h == 20 {
+                    // Rotation handle: compute visual clockwise angle from center → mouse
+                    let c = ann.rotationCenter
+                    ann.rotation = atan2(cur.y - c.y, cur.x - c.x) + .pi / 2
+                } else if h < 10 {
+                    // Resize in annotation-local (unrotated) space
+                    let localDelta = unrotateVec(dx: dx, dy: dy, by: ann.rotation)
+                    applyRectResize(ann: ann, handle: h, dx: localDelta.dx, dy: localDelta.dy,
+                                    proportional: event.modifierFlags.contains(.shift))
+                } else {
+                    applyLineResize(ann: ann, endpointIdx: h - 10, dx: dx, dy: dy)
+                }
             } else {
                 moveAnnotation(ann, dx: dx, dy: dy)
                 // Also move all other annotations in the multi-selection

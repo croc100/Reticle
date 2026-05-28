@@ -163,7 +163,7 @@ final class OverlayViewModel: ObservableObject {
                                                 height: CGFloat(baseCGImage.height) / scaleFactor)
         for ann in annotations {
             if ann is BlurAnnotation || ann is PixelateAnnotation || ann is BlackoutAnnotation { continue }
-            ann.draw(in: overlayBounds)
+            ann.drawRotated(in: overlayBounds)
         }
 
         NSGraphicsContext.restoreGraphicsState()

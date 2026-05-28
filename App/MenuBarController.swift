@@ -1,11 +1,14 @@
 import SwiftUI
 import Defaults
+import HotKey
+import CentreeCore
 
 /// SwiftUI content for the MenuBarExtra dropdown.
 struct MenuBarMenuView: View {
     @EnvironmentObject var coordinator: CaptureCoordinator
     @Default(.savedRegions)    var savedRegions
     @Default(.lastCaptureRect) var lastCaptureRect
+    @Default(.workflowProfiles) var workflowProfiles
     @ObservedObject private var autoCapture = AutoCaptureManager.shared
 
     var body: some View {
@@ -39,6 +42,18 @@ struct MenuBarMenuView: View {
             }
         }
 
+        let enabledWorkflows = workflowProfiles.filter { $0.enabled }
+        if !enabledWorkflows.isEmpty {
+            Divider()
+            Menu("Workflows") {
+                ForEach(enabledWorkflows) { profile in
+                    Button(workflowLabel(profile)) {
+                        coordinator.runWorkflow(profileID: profile.id)
+                    }
+                }
+            }
+        }
+
         Divider()
 
         Button("Open for Editing…") { coordinator.openForEditing() }
@@ -65,5 +80,15 @@ struct MenuBarMenuView: View {
 
         Button("Quit Centree") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
+    }
+
+    // MARK: - Helpers
+
+    private func workflowLabel(_ profile: StoredWorkflowProfile) -> String {
+        guard profile.keyCode > 0, let key = Key(carbonKeyCode: profile.keyCode) else {
+            return profile.name
+        }
+        let mods = CarbonModifiers.symbol(profile.modifiers)
+        return "\(profile.name)  \(mods)\(key.description.uppercased())"
     }
 }
