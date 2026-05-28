@@ -91,6 +91,11 @@ public extension Defaults.Keys {
     /// BCP-47 language codes for OCR (empty = auto-detect).
     static let ocrLanguages = Key<[String]>("ocrLanguages", default: [])
 
+    // MARK: Upload
+
+    /// Imgur Client ID for anonymous image uploads.
+    static let imgurClientID = Key<String>("imgurClientID", default: "")
+
     // MARK: Auto Capture
 
     static let autoCaptureEnabled  = Key<Bool>("autoCaptureEnabled",  default: false)

@@ -37,6 +37,11 @@ public enum AfterCaptureOption: String, CaseIterable, Codable, Sendable, Default
     /// Pin the captured image to the screen as a floating overlay.
     case pinToScreen
 
+    // MARK: Upload
+
+    /// Upload image to Imgur and copy the link to the clipboard.
+    case uploadToImgur
+
     // MARK: Metadata
 
     public var title: String {
@@ -49,6 +54,7 @@ public enum AfterCaptureOption: String, CaseIterable, Codable, Sendable, Default
         case .showNotification:return "Show capture notification"
         case .ocr:             return "Extract text (OCR)"
         case .pinToScreen:     return "Pin to screen"
+        case .uploadToImgur:   return "Upload to Imgur"
         }
     }
 
@@ -62,6 +68,7 @@ public enum AfterCaptureOption: String, CaseIterable, Codable, Sendable, Default
         case .showNotification:return "Floating thumbnail in the corner"
         case .ocr:             return "Reads text from the image via Vision"
         case .pinToScreen:     return "Floating window that stays on top"
+        case .uploadToImgur:   return "Requires Imgur Client ID in Settings → Output"
         }
     }
 

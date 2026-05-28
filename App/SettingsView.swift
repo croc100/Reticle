@@ -154,8 +154,9 @@ private struct OutputTab: View {
 private struct PipelineTab: View {
     @Default(.afterCaptureOptions) var options
     @Default(.ocrLanguages) var ocrLanguages
+    @Default(.imgurClientID) var imgurClientID
 
-    private let outputTasks: [AfterCaptureOption]    = [.copyToClipboard, .saveToFile]
+    private let outputTasks: [AfterCaptureOption]    = [.copyToClipboard, .saveToFile, .uploadToImgur]
     private let postSaveTasks: [AfterCaptureOption]  = [.revealInFinder, .copyFilePath, .openInViewer]
     private let notifyTasks: [AfterCaptureOption]    = [.showNotification]
     private let imageTasks: [AfterCaptureOption]     = [.ocr, .pinToScreen]
@@ -189,6 +190,18 @@ private struct PipelineTab: View {
                 ForEach(imageTasks, id: \.self) { opt in
                     PipelineRow(option: opt, options: $options)
                 }
+            }
+
+            if options.contains(.uploadToImgur) {
+                Section {
+                    HStack {
+                        Text("Client ID")
+                        TextField("your-imgur-client-id", text: $imgurClientID)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    Link("Get a free Client ID →", destination: URL(string: "https://api.imgur.com/oauth2/addclient")!)
+                        .font(.caption)
+                } header: { Text("Imgur Settings") }
             }
 
             if options.contains(.ocr) {

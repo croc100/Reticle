@@ -5,6 +5,7 @@ import CentreeCapture
 import CentreeCore
 import CentreeOverlay
 import CentreePipeline
+import CentreeUploaders
 import CentreeVision
 import Foundation
 
@@ -249,6 +250,25 @@ final class CaptureCoordinator: ObservableObject {
             }
 
             // OCR (async — show result panel when ready)
+            // Imgur upload
+            if optSet.contains(.uploadToImgur) {
+                let clientID = Defaults[.imgurClientID]
+                guard !clientID.isEmpty else {
+                    showError(NSError(domain: "Centree", code: 0,
+                                     userInfo: [NSLocalizedDescriptionKey: "Imgur Client ID not configured. Add it in Settings → Output."]))
+                    return
+                }
+                Task {
+                    do {
+                        let url = try await ImgurUploader(clientID: clientID).upload(image)
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(url.absoluteString, forType: .string)
+                    } catch {
+                        await MainActor.run { self.showError(error) }
+                    }
+                }
+            }
+
             if optSet.contains(.ocr) {
                 Task {
                     let langs = Defaults[.ocrLanguages]

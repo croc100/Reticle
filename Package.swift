@@ -41,6 +41,7 @@ let package = Package(
                 "CentreeVision",
                 "CentreeWorkflow",
                 "CentreeNaming",
+                "CentreeUploaders",
                 .product(name: "HotKey", package: "HotKey"),
                 .product(name: "Defaults", package: "Defaults"),
                 .product(name: "Sparkle", package: "Sparkle"),
