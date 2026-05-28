@@ -11,6 +11,19 @@ struct MenuBarMenuView: View {
     var body: some View {
         Button("Capture Region        ⌘⇧4") { coordinator.captureWithOverlay() }
         Button("Capture Full Screen   ⌘⇧3") { coordinator.captureFullScreen() }
+
+        // Per-monitor capture submenu (populated from connected NSScreens)
+        Menu("Capture Screen") {
+            ForEach(Array(NSScreen.screens.enumerated()), id: \.offset) { idx, screen in
+                let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")]
+                    as? CGDirectDisplayID ?? CGMainDisplayID()
+                let isMain = screen == NSScreen.main
+                Button("\(isMain ? "Main Screen" : "Screen \(idx + 1)")  —  \(Int(screen.frame.width))×\(Int(screen.frame.height))") {
+                    coordinator.captureDisplay(displayID: displayID)
+                }
+            }
+        }
+
         Button("Capture Window…")            { coordinator.captureWindowPicker() }
         Button("Scroll Capture…")            { coordinator.captureScroll() }
 

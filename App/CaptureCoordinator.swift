@@ -22,12 +22,13 @@ final class CaptureCoordinator: ObservableObject {
 
     // MARK: - Public actions
 
-    func captureWithOverlay()         { Task { await runOverlayCapture()        } }
-    func captureFullScreen()          { Task { await runFullScreen()            } }
-    func captureLastRegion()          { Task { await runLastRegion()            } }
-    func captureWindowPicker()        { Task { await runWindowPicker()          } }
-    func captureSavedRegion(id: UUID) { Task { await runSavedRegion(id: id)    } }
-    func captureScroll()              { Task { await runScrollCapture()         } }
+    func captureWithOverlay()                   { Task { await runOverlayCapture()           } }
+    func captureFullScreen()                    { Task { await runFullScreen()               } }
+    func captureLastRegion()                    { Task { await runLastRegion()               } }
+    func captureWindowPicker()                  { Task { await runWindowPicker()             } }
+    func captureSavedRegion(id: UUID)           { Task { await runSavedRegion(id: id)        } }
+    func captureScroll()                        { Task { await runScrollCapture()            } }
+    func captureDisplay(displayID: CGDirectDisplayID) { Task { await runDisplayCapture(displayID: displayID) } }
 
     // MARK: - Overlay flow
 
@@ -52,6 +53,16 @@ final class CaptureCoordinator: ObservableObject {
 
             await finalize(image: image, sourceRect: sourceRect, scaleFactor: scale)
 
+        } catch { showError(error) }
+    }
+
+    // MARK: - Per-display capture
+
+    private func runDisplayCapture(displayID: CGDirectDisplayID) async {
+        do {
+            await applyDelay()
+            let shot = try await capturer.capture(mode: .fullScreen(displayID: displayID))
+            await finalize(image: shot.image, sourceRect: shot.sourceRect, scaleFactor: shot.scaleFactor)
         } catch { showError(error) }
     }
 
