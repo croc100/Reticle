@@ -511,6 +511,8 @@ private struct WorkflowRow: View {
     let profile: StoredWorkflowProfile
     @Binding var profiles: [StoredWorkflowProfile]
 
+    @State private var isRecording = false
+
     private var idx: Int? { profiles.firstIndex(where: { $0.id == profile.id }) }
 
     private var hotkeyLabel: String {
@@ -520,28 +522,76 @@ private struct WorkflowRow: View {
     }
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(profile.name).fontWeight(.medium)
-                Text("Hotkey: \(hotkeyLabel)  ·  Mode: \(profile.captureMode)  ·  Output: \(profile.outputDestinations.joined(separator: ", "))")
-                    .font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
+
+            // ── Row 1: name  ·  enable  ·  delete ──
+            HStack(spacing: 8) {
+                if let i = idx {
+                    TextField("Profile name", text: Binding(
+                        get: { profiles[i].name },
+                        set: { profiles[i].name = $0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                }
+                Spacer()
+                if let i = idx {
+                    Toggle("", isOn: Binding(
+                        get: { profiles[i].enabled },
+                        set: { profiles[i].enabled = $0 }
+                    ))
+                    .labelsHidden()
+                }
+                Button(role: .destructive) {
+                    profiles.removeAll { $0.id == profile.id }
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
             }
-            Spacer()
-            if let i = idx {
-                Toggle("", isOn: Binding(
-                    get: { profiles[i].enabled },
-                    set: { profiles[i].enabled = $0 }
-                ))
-                .labelsHidden()
+
+            // ── Row 2: capture mode  ·  hotkey recorder ──
+            HStack(spacing: 10) {
+                Text("Mode:")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 42, alignment: .trailing)
+
+                if let i = idx {
+                    Picker("", selection: Binding(
+                        get: { profiles[i].captureMode },
+                        set: { profiles[i].captureMode = $0 }
+                    )) {
+                        Text("Region").tag("region")
+                        Text("Window").tag("window")
+                        Text("Full Screen").tag("fullScreen")
+                    }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                }
+
+                Text("Hotkey:")
+                    .foregroundStyle(.secondary)
+
+                if let i = idx {
+                    HotkeyRecorderView(
+                        keyCode: Binding(
+                            get: { profiles[i].keyCode },
+                            set: { profiles[i].keyCode = $0 }
+                        ),
+                        modifiers: Binding(
+                            get: { profiles[i].modifiers },
+                            set: { profiles[i].modifiers = $0 }
+                        ),
+                        isRecording: $isRecording,
+                        displayString: hotkeyLabel
+                    )
+                    .frame(width: 120, height: 24)
+                }
+
+                Spacer()
             }
-            Button(role: .destructive) {
-                profiles.removeAll { $0.id == profile.id }
-            } label: {
-                Image(systemName: "trash")
-            }
-            .buttonStyle(.plain).foregroundStyle(.red)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 }
 
