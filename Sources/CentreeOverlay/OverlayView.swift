@@ -92,7 +92,9 @@ final class OverlayView: NSView {
         // Collect spotlights separately — drawn as a unified overlay at end
         let spotlights = vm.annotations.compactMap { $0 as? SpotlightAnnotation }
         for ann in vm.annotations where !(ann is SpotlightAnnotation) { drawAnnotation(ann) }
-        if let ip = inProgressAnnotation, !(ip is SpotlightAnnotation) { drawAnnotation(ip) }
+        // Draw in-progress annotation only if it is NOT already in vm.annotations (avoids double-draw)
+        if let ip = inProgressAnnotation, !(ip is SpotlightAnnotation),
+           !vm.annotations.contains(where: { $0 === ip }) { drawAnnotation(ip) }
 
         // Spotlight overlay (dark with holes)
         var allSpotlights = spotlights

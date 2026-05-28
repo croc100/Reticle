@@ -14,6 +14,8 @@ final class HotkeyManager {
     var onClipboardHistory: (() -> Void)?
     var onCaptureLastRegion: (() -> Void)?
     var onCaptureWindowPicker: (() -> Void)?
+    /// Called when a workflow profile hotkey fires; receives the profile ID.
+    var onWorkflow: ((UUID) -> Void)?
 
     // MARK: Private
 
@@ -22,6 +24,7 @@ final class HotkeyManager {
     private var clipboardHotKey: HotKey?
     private var lastRegionHotKey: HotKey?
     private var windowPickerHotKey: HotKey?
+    private var workflowHotKeys: [UUID: HotKey] = [:]
     private var observations: [Defaults.Observation] = []
 
     // MARK: Init
@@ -58,6 +61,19 @@ final class HotkeyManager {
             keyCode: Defaults[.windowPickerHotkeyKeyCode],
             modifiers: Defaults[.windowPickerHotkeyMods]
         ) { [weak self] in self?.onCaptureWindowPicker?() }
+
+        registerWorkflowHotKeys()
+    }
+
+    func registerWorkflowHotKeys() {
+        workflowHotKeys.removeAll()
+        for profile in Defaults[.workflowProfiles] where profile.enabled && profile.keyCode > 0 {
+            let id = profile.id
+            if let hk = makeHotKey(keyCode: profile.keyCode, modifiers: profile.modifiers,
+                                   handler: { [weak self] in self?.onWorkflow?(id) }) {
+                workflowHotKeys[id] = hk
+            }
+        }
     }
 
     // MARK: - Observe Defaults changes
@@ -87,6 +103,9 @@ final class HotkeyManager {
                     keyCode: Defaults[.windowPickerHotkeyKeyCode],
                     modifiers: Defaults[.windowPickerHotkeyMods]
                 ) { [weak self] in self?.onCaptureWindowPicker?() }
+            },
+            Defaults.observe(.workflowProfiles) { [weak self] _ in
+                self?.registerWorkflowHotKeys()
             },
         ]
     }

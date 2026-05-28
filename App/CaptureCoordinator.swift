@@ -31,6 +31,7 @@ final class CaptureCoordinator: ObservableObject {
     func captureScroll()                        { Task { await runScrollCapture()            } }
     func captureDisplay(displayID: CGDirectDisplayID) { Task { await runDisplayCapture(displayID: displayID) } }
     func openForEditing()                             { Task { await runEditorMode()                        } }
+    func runWorkflow(profileID: UUID)                 { Task { await runWorkflowProfile(id: profileID)      } }
 
     // MARK: - Overlay flow
 
@@ -56,6 +57,20 @@ final class CaptureCoordinator: ObservableObject {
             await finalize(image: image, sourceRect: sourceRect, scaleFactor: scale)
 
         } catch { showError(error) }
+    }
+
+    // MARK: - Workflow Profile execution
+
+    private func runWorkflowProfile(id: UUID) async {
+        guard let profile = Defaults[.workflowProfiles].first(where: { $0.id == id }),
+              profile.enabled else { return }
+        // Route to the appropriate capture mode; each already handles delay internally.
+        switch profile.captureMode {
+        case "region":     await runOverlayCapture()
+        case "window":     await runWindowPicker()
+        case "fullScreen": await runFullScreen()
+        default:           await runOverlayCapture()
+        }
     }
 
     // MARK: - Editor mode

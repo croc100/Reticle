@@ -14,6 +14,7 @@ struct CentreeApp: App {
         hotkeyManager.onClipboardHistory    = { ClipboardHistoryPanel.shared.toggle()        }
         hotkeyManager.onCaptureLastRegion   = { [self] in coordinator.captureLastRegion()    }
         hotkeyManager.onCaptureWindowPicker = { [self] in coordinator.captureWindowPicker()  }
+        hotkeyManager.onWorkflow            = { [self] id in coordinator.runWorkflow(profileID: id) }
 
         AutoCaptureManager.shared.captureAction = { [self] mode in
             switch mode {
