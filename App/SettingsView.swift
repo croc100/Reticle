@@ -2,6 +2,7 @@ import SwiftUI
 import Defaults
 import HotKey
 import CentreeCore
+import CentreeVision
 
 // MARK: - Root
 
@@ -152,6 +153,7 @@ private struct OutputTab: View {
 
 private struct PipelineTab: View {
     @Default(.afterCaptureOptions) var options
+    @Default(.ocrLanguages) var ocrLanguages
 
     private let outputTasks: [AfterCaptureOption]    = [.copyToClipboard, .saveToFile]
     private let postSaveTasks: [AfterCaptureOption]  = [.revealInFinder, .copyFilePath, .openInViewer]
@@ -187,6 +189,25 @@ private struct PipelineTab: View {
                 ForEach(imageTasks, id: \.self) { opt in
                     PipelineRow(option: opt, options: $options)
                 }
+            }
+
+            if options.contains(.ocr) {
+                Section {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Recognition Language")
+                            .font(.subheadline)
+                        let langs = OCRProcessor.supportedLanguages
+                        Picker("Language", selection: Binding(
+                            get: { ocrLanguages.first ?? "" },
+                            set: { ocrLanguages = $0.isEmpty ? [] : [$0] }
+                        )) {
+                            Text("Auto-detect").tag("")
+                            ForEach(langs, id: \.self) { lang in
+                                Text(Locale.current.localizedString(forIdentifier: lang) ?? lang).tag(lang)
+                            }
+                        }
+                    }
+                } header: { Text("OCR Settings") }
             }
         }
         .formStyle(.grouped)

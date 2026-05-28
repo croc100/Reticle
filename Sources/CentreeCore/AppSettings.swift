@@ -86,6 +86,11 @@ public extension Defaults.Keys {
         default: [.copyToClipboard, .saveToFile, .showNotification]
     )
 
+    // MARK: OCR
+
+    /// BCP-47 language codes for OCR (empty = auto-detect).
+    static let ocrLanguages = Key<[String]>("ocrLanguages", default: [])
+
     // MARK: Auto Capture
 
     static let autoCaptureEnabled  = Key<Bool>("autoCaptureEnabled",  default: false)

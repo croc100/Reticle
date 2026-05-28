@@ -251,7 +251,8 @@ final class CaptureCoordinator: ObservableObject {
             // OCR (async — show result panel when ready)
             if optSet.contains(.ocr) {
                 Task {
-                    let text = (try? await OCRProcessor().recognizeText(in: image)) ?? ""
+                    let langs = Defaults[.ocrLanguages]
+                    let text = (try? await OCRProcessor(languages: langs).recognizeText(in: image)) ?? ""
                     OCRResultPanel.shared.show(text: text)
                 }
             }
