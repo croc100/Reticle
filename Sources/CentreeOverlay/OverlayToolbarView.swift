@@ -52,8 +52,6 @@ struct OverlayToolbarView: View {
 
             toolOptions()
 
-            Spacer()
-
             UndoButton(vm: vm)
             divider()
 
@@ -77,9 +75,11 @@ struct OverlayToolbarView: View {
             .padding(.trailing, 8)
             .keyboardShortcut(.return, modifiers: .command)
         }
-        .frame(height: 46)
-        .background(.bar)
-        .overlay(alignment: .bottom) { Divider() }
+        .frame(height: 44)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.35), radius: 16, y: 6)
+        .padding(14)
     }
 
     // MARK: Helpers

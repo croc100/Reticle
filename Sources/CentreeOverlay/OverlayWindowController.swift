@@ -71,7 +71,6 @@ public final class OverlayWindowController {
     // MARK: - Toolbar
 
     private func addToolbar(to window: OverlayNSWindow, screen: NSScreen?) {
-        let toolbarH: CGFloat = 44
         let safeTop: CGFloat = screen?.safeAreaInsets.top ?? 0
         let w = window.contentView!.bounds.width
         let h = window.contentView!.bounds.height
@@ -80,17 +79,26 @@ public final class OverlayWindowController {
         let hosting = NSHostingView(rootView: toolbarView)
         hosting.wantsLayer = true
 
-        // Start above visible area (for slide-in animation)
-        let finalY = h - safeTop - toolbarH
-        hosting.frame = NSRect(x: 0, y: h, width: w, height: toolbarH)
-        hosting.autoresizingMask = [.width, .minYMargin]
+        // Temporarily place offscreen so SwiftUI can compute intrinsic size
+        hosting.frame = NSRect(x: 0, y: h + 300, width: w, height: 200)
         window.contentView!.addSubview(hosting)
+        hosting.layoutSubtreeIfNeeded()
+
+        let fit = hosting.fittingSize
+        let toolbarW = fit.width > 10 ? fit.width : min(w - 40, 900)
+        let toolbarH = fit.height > 10 ? fit.height : 72
+        let startX   = ((w - toolbarW) / 2).rounded()
+        let finalY   = h - safeTop - toolbarH - 4
+        let startY   = h + toolbarH
+
+        hosting.frame = NSRect(x: startX, y: startY, width: toolbarW, height: toolbarH)
+        hosting.autoresizingMask = [.minXMargin, .maxXMargin]
         toolbarHostingView = hosting
 
-        // Apple-style spring slide-in
+        // Dock-like spring slide-in (overshoot cubic bezier)
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.45
-            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.25, 0.46, 0.45, 0.94)
+            ctx.duration = 0.55
+            ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.34, 1.56, 0.64, 1.0)
             ctx.allowsImplicitAnimation = true
             hosting.animator().frame.origin.y = finalY
         }

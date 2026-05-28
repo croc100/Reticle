@@ -20,16 +20,34 @@ final class WindowPickerPanel {
         }
     }
 
+    private static let systemBundleIDPrefixes = [
+        "com.apple.dock", "com.apple.notificationcenterui",
+        "com.apple.controlcenter", "com.apple.systemuiserver",
+        "com.apple.wallpaper", "com.apple.Spotlight",
+        "com.apple.WindowManager",
+    ]
+
     private func filtered(_ windows: [SCWindow]) -> [SCWindow] {
         let selfID = Bundle.main.bundleIdentifier ?? ""
         return windows
             .filter {
-                $0.isOnScreen &&
-                $0.frame.width  > 80 &&
-                $0.frame.height > 80 &&
-                $0.owningApplication?.bundleIdentifier != selfID &&
-                $0.owningApplication?.applicationName != "Dock" &&
-                $0.owningApplication?.applicationName != "Window Server"
+                guard $0.isOnScreen,
+                      $0.frame.width  > 100,
+                      $0.frame.height > 100,
+                      $0.windowLayer == 0,
+                      let app = $0.owningApplication,
+                      app.bundleIdentifier != selfID,
+                      app.applicationName != "Window Server"
+                else { return false }
+
+                // Widget windows carry "::" in their title (e.g. bundle::widgetID)
+                if let title = $0.title, title.contains("::") { return false }
+
+                // Filter known system-only background processes
+                let bid = app.bundleIdentifier
+                if Self.systemBundleIDPrefixes.contains(where: { bid.hasPrefix($0) }) { return false }
+
+                return true
             }
             .sorted {
                 ($0.owningApplication?.applicationName ?? "") <

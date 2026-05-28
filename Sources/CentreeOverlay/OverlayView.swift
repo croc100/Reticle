@@ -40,7 +40,6 @@ final class OverlayView: NSView {
         self.baseNSImage = NSImage(cgImage: backgroundImage, size: .zero)
         self.scaleFactor = scaleFactor
         super.init(frame: .zero)
-        wantsLayer = true
     }
 
     required init?(coder: NSCoder) { fatalError() }
