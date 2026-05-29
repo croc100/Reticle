@@ -130,6 +130,12 @@ public extension Defaults.Keys {
     /// When true a semi-transparent dark pill is drawn behind the text for legibility.
     static let watermarkBackground = Key<Bool>("watermarkBackground",   default: false)
 
+    // MARK: Upload link format
+
+    /// Format for the URL copied to the clipboard after upload.
+    /// One of: "url", "html", "markdown", "bbcode"
+    static let uploadLinkFormat = Key<String>("uploadLinkFormat", default: "url")
+
     // MARK: SFTP Upload
 
     static let sftpHost           = Key<String>("sftpHost",           default: "")

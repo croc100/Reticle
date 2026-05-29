@@ -213,6 +213,7 @@ private struct PipelineTab: View {
     @Default(.sftpPrivateKeyPath)     var sftpPrivateKeyPath
     @Default(.sftpRemotePath)         var sftpRemotePath
     @Default(.sftpPublicURL)          var sftpPublicURL
+    @Default(.uploadLinkFormat)       var uploadLinkFormat
 
     private let outputTasks: [AfterCaptureOption]    = [.copyToClipboard, .saveToFile,
                                                         .uploadToImgur, .uploadToS3, .uploadToSFTP,
@@ -250,6 +251,21 @@ private struct PipelineTab: View {
                 ForEach(imageTasks, id: \.self) { opt in
                     PipelineRow(option: opt, options: $options)
                 }
+            }
+
+            let hasAnyUpload = options.contains(.uploadToImgur) || options.contains(.uploadToS3)
+                            || options.contains(.uploadToSFTP)  || options.contains(.uploadCustomHTTP)
+            if hasAnyUpload {
+                Section {
+                    Picker("Link format", selection: $uploadLinkFormat) {
+                        Text("Plain URL").tag("url")
+                        Text("HTML  <img src=\"…\">").tag("html")
+                        Text("Markdown  ![Screenshot](…)").tag("markdown")
+                        Text("BBCode  [img]…[/img]").tag("bbcode")
+                    }
+                    Text("Controls what is placed on the clipboard after a successful upload.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } header: { Text("Upload Link Format") }
             }
 
             if options.contains(.uploadToImgur) {

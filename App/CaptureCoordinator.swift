@@ -444,11 +444,19 @@ final class CaptureCoordinator: ObservableObject {
 
     // MARK: - Upload completion
 
-    /// Copies the URL to the clipboard and optionally opens it in the default browser.
+    /// Copies the formatted URL to the clipboard and optionally opens it in the default browser.
     @MainActor
     private func handleUploadedURL(_ url: URL, openInBrowser: Bool) {
+        let raw = url.absoluteString
+        let text: String
+        switch Defaults[.uploadLinkFormat] {
+        case "html":     text = "<img src=\"\(raw)\" alt=\"Screenshot\">"
+        case "markdown": text = "![Screenshot](\(raw))"
+        case "bbcode":   text = "[img]\(raw)[/img]"
+        default:         text = raw   // "url" = plain URL
+        }
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(url.absoluteString, forType: .string)
+        NSPasteboard.general.setString(text, forType: .string)
         if openInBrowser { NSWorkspace.shared.open(url) }
     }
 
