@@ -227,7 +227,8 @@ final class CaptureCoordinator: ObservableObject {
             if let destinations = profileDestinations {
                 var effective = Set(globalOptions)
                 let outputOptions: Set<AfterCaptureOption> = [
-                    .copyToClipboard, .saveToFile, .uploadToImgur, .uploadToS3, .uploadCustomHTTP
+                    .copyToClipboard, .saveToFile, .uploadToImgur, .uploadToS3,
+                    .uploadToSFTP, .uploadCustomHTTP
                 ]
                 effective.subtract(outputOptions)
                 for d in destinations {
@@ -236,6 +237,7 @@ final class CaptureCoordinator: ObservableObject {
                     case "localFile":  effective.insert(.saveToFile)
                     case "imgur":      effective.insert(.uploadToImgur)
                     case "s3":         effective.insert(.uploadToS3)
+                    case "sftp":       effective.insert(.uploadToSFTP)
                     case "customHTTP": effective.insert(.uploadCustomHTTP)
                     default: break
                     }
@@ -380,6 +382,31 @@ final class CaptureCoordinator: ObservableObject {
                 Task {
                     do {
                         let url = try await CustomHTTPUploader(config: httpConfig).upload(image)
+                        handleUploadedURL(url, openInBrowser: openAfterUpload)
+                    } catch { await MainActor.run { self.showError(error) } }
+                }
+            }
+
+            if optSet.contains(.uploadToSFTP) {
+                let host = Defaults[.sftpHost]
+                guard !host.isEmpty else {
+                    showError(NSError(domain: "Centree", code: 0,
+                                     userInfo: [NSLocalizedDescriptionKey:
+                                        "SFTP host not configured. Add it in Settings → Pipeline."]))
+                    return
+                }
+                let sftpConfig = SFTPUploader.Config(
+                    host: host,
+                    port: Defaults[.sftpPort],
+                    username: Defaults[.sftpUsername],
+                    password: Defaults[.sftpPassword],
+                    privateKeyPath: Defaults[.sftpPrivateKeyPath],
+                    remotePath: Defaults[.sftpRemotePath],
+                    publicBaseURL: Defaults[.sftpPublicURL]
+                )
+                Task {
+                    do {
+                        let url = try await SFTPUploader(config: sftpConfig).upload(image)
                         handleUploadedURL(url, openInBrowser: openAfterUpload)
                     } catch { await MainActor.run { self.showError(error) } }
                 }

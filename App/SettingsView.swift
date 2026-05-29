@@ -206,10 +206,17 @@ private struct PipelineTab: View {
     @Default(.borderOpacity)          var borderOpacity
     @Default(.borderShadow)           var borderShadow
     @Default(.borderShadowBlur)       var borderShadowBlur
+    @Default(.sftpHost)               var sftpHost
+    @Default(.sftpPort)               var sftpPort
+    @Default(.sftpUsername)           var sftpUsername
+    @Default(.sftpPassword)           var sftpPassword
+    @Default(.sftpPrivateKeyPath)     var sftpPrivateKeyPath
+    @Default(.sftpRemotePath)         var sftpRemotePath
+    @Default(.sftpPublicURL)          var sftpPublicURL
 
     private let outputTasks: [AfterCaptureOption]    = [.copyToClipboard, .saveToFile,
-                                                        .uploadToImgur, .uploadToS3, .uploadCustomHTTP,
-                                                        .openUploadedURL]
+                                                        .uploadToImgur, .uploadToS3, .uploadToSFTP,
+                                                        .uploadCustomHTTP, .openUploadedURL]
     private let postSaveTasks: [AfterCaptureOption]  = [.revealInFinder, .copyFilePath, .openInViewer]
     private let notifyTasks: [AfterCaptureOption]    = [.showNotification]
     private let imageTasks: [AfterCaptureOption]     = [.ocr, .autoRedactPII, .watermark, .imageBorder, .print, .pinToScreen]
@@ -255,6 +262,55 @@ private struct PipelineTab: View {
                     Link("Get a free Client ID →", destination: URL(string: "https://api.imgur.com/oauth2/addclient")!)
                         .font(.caption)
                 } header: { Text("Imgur Settings") }
+            }
+
+            if options.contains(.uploadToSFTP) {
+                Section {
+                    LabeledContent("Host") {
+                        TextField("sftp.example.com", text: $sftpHost)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    LabeledContent("Port") {
+                        TextField("22", value: $sftpPort, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 70)
+                    }
+                    LabeledContent("Username") {
+                        TextField("user", text: $sftpUsername)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    LabeledContent("Password") {
+                        SecureField("Leave blank for key auth", text: $sftpPassword)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    LabeledContent("Private key") {
+                        HStack {
+                            TextField("/Users/you/.ssh/id_rsa  (optional)", text: $sftpPrivateKeyPath)
+                                .textFieldStyle(.roundedBorder)
+                            Button("Browse…") {
+                                let panel = NSOpenPanel()
+                                panel.canChooseFiles = true
+                                panel.canChooseDirectories = false
+                                panel.allowsMultipleSelection = false
+                                panel.directoryURL = URL(fileURLWithPath: NSHomeDirectory() + "/.ssh")
+                                if panel.runModal() == .OK, let url = panel.url {
+                                    sftpPrivateKeyPath = url.path
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                    LabeledContent("Remote path") {
+                        TextField("/var/www/screenshots/", text: $sftpRemotePath)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    LabeledContent("Public URL") {
+                        TextField("https://cdn.example.com/screenshots/  (for the clipboard link)", text: $sftpPublicURL)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    Text("Uploads via curl (requires the server's host key to be in ~/.ssh/known_hosts). Password or private key must be set.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } header: { Text("SFTP Settings") }
             }
 
             if options.contains(.uploadToS3) {
@@ -872,6 +928,7 @@ private enum WorkflowOutputDestination: String, CaseIterable {
     case localFile  = "localFile"
     case imgur      = "imgur"
     case s3         = "s3"
+    case sftp       = "sftp"
     case customHTTP = "customHTTP"
 
     var label: String {
@@ -880,6 +937,7 @@ private enum WorkflowOutputDestination: String, CaseIterable {
         case .localFile:  return "File"
         case .imgur:      return "Imgur"
         case .s3:         return "S3"
+        case .sftp:       return "SFTP"
         case .customHTTP: return "HTTP"
         }
     }
@@ -890,6 +948,7 @@ private enum WorkflowOutputDestination: String, CaseIterable {
         case .localFile:  return "folder"
         case .imgur:      return "photo.on.rectangle"
         case .s3:         return "externaldrive.connected.to.line.below"
+        case .sftp:       return "terminal"
         case .customHTTP: return "network"
         }
     }

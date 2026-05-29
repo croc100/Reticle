@@ -130,6 +130,18 @@ public extension Defaults.Keys {
     /// When true a semi-transparent dark pill is drawn behind the text for legibility.
     static let watermarkBackground = Key<Bool>("watermarkBackground",   default: false)
 
+    // MARK: SFTP Upload
+
+    static let sftpHost           = Key<String>("sftpHost",           default: "")
+    static let sftpPort           = Key<Int>("sftpPort",               default: 22)
+    static let sftpUsername       = Key<String>("sftpUsername",        default: "")
+    static let sftpPassword       = Key<String>("sftpPassword",        default: "")
+    static let sftpPrivateKeyPath = Key<String>("sftpPrivateKeyPath",  default: "")
+    /// Remote directory to upload into, e.g. "/var/www/screenshots/".
+    static let sftpRemotePath     = Key<String>("sftpRemotePath",      default: "/")
+    /// Base URL to prepend to the filename for the public link, e.g. "https://cdn.example.com/screenshots/".
+    static let sftpPublicURL      = Key<String>("sftpPublicURL",       default: "")
+
     // MARK: Output Format
 
     /// File format for saved screenshots: "png", "jpeg", "tiff", "webp".
