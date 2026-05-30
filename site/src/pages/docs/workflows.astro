@@ -1,0 +1,82 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Workflows" current="workflows">
+  <h1 class="text-3xl font-bold mb-2">Workflow Profiles</h1>
+  <p class="text-text-secondary mb-10">Chain capture → output → upload into a single keypress.</p>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">What is a Workflow?</h2>
+    <p class="text-sm text-text-secondary mb-4">
+      A Workflow Profile lets you bundle a set of actions and trigger them all with one hotkey.
+      For example: press ⌃⌘5 → region capture → copy to clipboard + upload to S3 → copy the URL.
+    </p>
+    <div class="p-4 bg-surface-raised border border-surface-border rounded-xl text-sm text-text-secondary">
+      Workflows appear in the menu bar under <strong class="text-text-primary">Workflows</strong>. You can have as many as you want, each with a different hotkey and destination.
+    </div>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Creating a Workflow</h2>
+    <ol class="space-y-3">
+      {[
+        ['Open Settings', 'Menu bar → Settings… → Workflows tab.'],
+        ['Click +', 'Add a new workflow profile.'],
+        ['Name it', 'Give it a descriptive name — e.g. "Screenshot → Imgur".'],
+        ['Choose capture mode', 'Region, Full-Screen, Window, etc.'],
+        ['Set after-capture actions', 'Copy, save, upload — pick what runs automatically.'],
+        ['Set upload destination', 'Choose from your configured upload destinations.'],
+        ['Assign a hotkey', 'Click the key field and press your shortcut.'],
+        ['Enable it', 'Toggle the profile on. It\'ll appear in the menu bar and respond to its hotkey.'],
+      ].map(([step, note]) => (
+        <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+          <span class="text-sm font-semibold text-accent flex-shrink-0 w-28">{step}</span>
+          <span class="text-sm text-text-secondary">{note}</span>
+        </div>
+      ))}
+    </ol>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-semibold mb-4">Example Workflows</h2>
+    <div class="space-y-3">
+      {[
+        {
+          name: 'Quick Share',
+          hotkey: '⌃⌘5',
+          steps: ['Region capture', 'Upload to Imgur', 'Copy URL to clipboard', 'Show notification'],
+          desc: 'One press → region select → paste the Imgur link anywhere.',
+        },
+        {
+          name: 'Work Screenshot',
+          hotkey: '⌃⌘6',
+          steps: ['Region capture', 'Save to ~/Screenshots', 'Upload to S3', 'Copy URL'],
+          desc: 'Saves a local copy and uploads to your company S3 bucket.',
+        },
+        {
+          name: 'Silent Capture',
+          hotkey: '⌃⌘7',
+          steps: ['Full-screen capture', 'Save to file'],
+          desc: 'No clipboard, no upload, no notification — just saves silently.',
+        },
+      ].map(w => (
+        <div class="p-5 bg-surface-raised border border-surface-border rounded-xl">
+          <div class="flex items-center justify-between mb-2">
+            <div class="font-medium text-text-primary">{w.name}</div>
+            <kbd class="text-xs font-mono bg-black/40 border border-surface-border rounded px-2 py-1 text-text-primary">{w.hotkey}</kbd>
+          </div>
+          <div class="flex flex-wrap gap-1.5 mb-3">
+            {w.steps.map((s, i) => (
+              <span class="flex items-center gap-1">
+                <span class="text-xs px-2 py-0.5 bg-accent/10 border border-accent/20 text-accent rounded-full">{s}</span>
+                {i < w.steps.length - 1 && <span class="text-text-secondary text-xs">→</span>}
+              </span>
+            ))}
+          </div>
+          <div class="text-sm text-text-secondary">{w.desc}</div>
+        </div>
+      ))}
+    </div>
+  </section>
+</DocsLayout>

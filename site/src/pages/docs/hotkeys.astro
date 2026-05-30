@@ -1,0 +1,92 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Hotkeys" current="hotkeys">
+  <h1 class="text-3xl font-bold mb-2">Global Hotkeys</h1>
+  <p class="text-text-secondary mb-10">Trigger any capture mode from anywhere on your Mac with a keyboard shortcut.</p>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Setting a Hotkey</h2>
+    <ol class="space-y-2 mb-6">
+      {[
+        'Open Settings (menu bar → Settings… or ⌘,).',
+        'Go to the Hotkeys tab.',
+        'Click the key field next to the action you want to configure.',
+        'Press your desired key combination.',
+        'The shortcut is saved immediately.',
+      ].map((s, i) => (
+        <li class="flex gap-3 text-sm text-text-secondary">
+          <span class="text-accent font-bold flex-shrink-0">{i + 1}.</span> {s}
+        </li>
+      ))}
+    </ol>
+    <div class="p-4 border border-yellow-500/20 bg-yellow-500/5 rounded-xl text-sm text-text-secondary">
+      <strong class="text-yellow-400">Tip:</strong> Use modifier combinations like ⌃⌘, ⌥⌘, or ⌃⇧ to avoid conflicts with system shortcuts. Reticle hotkeys work even when the app is in the background.
+    </div>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Default Hotkeys</h2>
+    <div class="overflow-x-auto rounded-xl border border-surface-border">
+      <table class="w-full text-sm">
+        <thead class="bg-surface-raised border-b border-surface-border">
+          <tr>
+            <th class="text-left px-5 py-3 text-text-secondary font-medium">Action</th>
+            <th class="text-left px-5 py-3 text-text-secondary font-medium">Default</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            ['Capture Region', '⌃⌘4'],
+            ['Capture Full Screen', '⌃⌘3'],
+            ['Capture Window', '⌃⌘2'],
+            ['Repeat Last Region', '⌃⌘R'],
+            ['Clipboard History', '⌘⇧V'],
+            ['Color Picker', '⌃⌘C'],
+          ].map(([action, key]) => (
+            <tr class="border-b border-surface-border last:border-0">
+              <td class="px-5 py-3 text-text-secondary">{action}</td>
+              <td class="px-5 py-3 font-mono text-sm text-text-primary">{key}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">In-Overlay Shortcuts</h2>
+    <p class="text-text-secondary text-sm mb-4">These shortcuts work while the freeze overlay is open:</p>
+    <div class="overflow-x-auto rounded-xl border border-surface-border">
+      <table class="w-full text-sm">
+        <thead class="bg-surface-raised border-b border-surface-border">
+          <tr>
+            <th class="text-left px-5 py-3 text-text-secondary font-medium">Key</th>
+            <th class="text-left px-5 py-3 text-text-secondary font-medium">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            ['⌘Z', 'Undo last annotation'],
+            ['Delete / Backspace', 'Delete selected annotation'],
+            ['Return / Enter', 'Finalize and capture'],
+            ['Escape', 'Cancel capture'],
+            ['Shift + drag', 'Constrain to square / 45° angle'],
+            ['Shift + click', 'Add to selection (multi-select)'],
+          ].map(([key, action]) => (
+            <tr class="border-b border-surface-border last:border-0">
+              <td class="px-5 py-3 font-mono text-xs text-text-primary">{key}</td>
+              <td class="px-5 py-3 text-text-secondary">{action}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-semibold mb-4">Workflow Hotkeys</h2>
+    <p class="text-text-secondary text-sm">Each Workflow Profile can have its own hotkey that triggers the full capture → annotate → upload pipeline in one press. <a href="/docs/workflows/" class="text-accent hover:underline">See Workflows →</a></p>
+  </section>
+</DocsLayout>

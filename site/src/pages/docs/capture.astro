@@ -1,0 +1,107 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+const base = import.meta.env.BASE_URL;
+---
+
+<DocsLayout title="Capture Modes" current="capture">
+  <h1 class="text-3xl font-bold mb-2">Capture Modes</h1>
+  <p class="text-text-secondary mb-10">All the ways Reticle can grab your screen.</p>
+
+  <!-- Region -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Region Capture <span class="text-sm font-normal text-text-secondary ml-2">Default hotkey: ⌃⌘4</span></h2>
+    <p class="text-text-secondary text-sm mb-5">The main capture mode. Your screen freezes into a high-resolution overlay and you draw a selection.</p>
+    <div class="space-y-2 mb-5">
+      {[
+        ['Drag', 'Draw any rectangular region.'],
+        ['Click a window', 'Instantly captures that window (ShareX-style). Windows highlight as you hover.'],
+        ['Shift + drag', 'Constrain selection to a perfect square.'],
+        ['Scroll', 'Zoom the frozen image for pixel-precise edges.'],
+        ['Escape', 'Cancel without capturing.'],
+      ].map(([key, desc]) => (
+        <div class="flex gap-3 items-start p-3 bg-surface-raised border border-surface-border rounded-lg">
+          <kbd class="text-xs font-mono bg-black/40 border border-surface-border rounded px-2 py-1 text-text-primary flex-shrink-0 whitespace-nowrap">{key}</kbd>
+          <span class="text-sm text-text-secondary">{desc}</span>
+        </div>
+      ))}
+    </div>
+    <p class="text-sm text-text-secondary">After selecting, the annotation toolbar slides in from the top. Annotate, then press <kbd class="bg-black/40 border border-surface-border rounded px-1.5 py-0.5 text-xs font-mono">Return</kbd> or click <strong class="text-text-primary">Done</strong>.</p>
+  </section>
+
+  <!-- Full screen -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Full-Screen Capture <span class="text-sm font-normal text-text-secondary ml-2">Default: ⌃⌘3</span></h2>
+    <p class="text-text-secondary text-sm">Captures your entire screen instantly — no selection needed. The screenshot goes straight through your After Capture pipeline (clipboard, file save, upload, etc.).</p>
+  </section>
+
+  <!-- Per-monitor -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Per-Monitor Capture</h2>
+    <p class="text-text-secondary text-sm mb-3">
+      If you have multiple displays, you can capture a single monitor exactly. Go to the menu bar icon → <strong class="text-text-primary">Capture Screen</strong> → pick your monitor.
+    </p>
+    <p class="text-text-secondary text-sm">Each monitor is listed with its resolution so you know which is which.</p>
+  </section>
+
+  <!-- Window picker -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Window Capture</h2>
+    <p class="text-text-secondary text-sm mb-3">Captures a single app window — including its shadow — with a pixel-perfect crop.</p>
+    <div class="p-4 bg-surface-raised border border-surface-border rounded-xl text-sm text-text-secondary">
+      Menu bar → <strong class="text-text-primary">Capture Window…</strong> → your cursor turns into a crosshair. Move over any window and click. Reticle captures that window including its drop shadow.
+    </div>
+    <p class="text-sm text-text-secondary mt-3">You can also do this directly from Region mode — hover over a window and it highlights, then click.</p>
+  </section>
+
+  <!-- Scroll -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Scrolling Screenshot</h2>
+    <p class="text-text-secondary text-sm mb-3">Captures content longer than your screen by automatically scrolling and stitching frames together.</p>
+    <div class="space-y-3">
+      {[
+        ['Open', 'Menu bar → Scroll Capture…'],
+        ['Select', 'Click the scrollable area you want to capture (e.g. a webpage, a long Slack thread).'],
+        ['Scroll', 'Reticle scrolls automatically and stitches the frames in real time.'],
+        ['Stop', 'Click to stop, or wait for the end of the content.'],
+      ].map(([step, note]) => (
+        <div class="flex gap-3 p-3 bg-surface-raised border border-surface-border rounded-lg">
+          <span class="text-xs font-semibold text-accent w-12 flex-shrink-0 mt-0.5">{step}</span>
+          <span class="text-sm text-text-secondary">{note}</span>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Repeat / Saved regions -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Repeat & Saved Regions</h2>
+    <div class="space-y-4">
+      <div class="p-5 bg-surface-raised border border-surface-border rounded-xl">
+        <div class="font-medium text-text-primary mb-1">Repeat Last Region</div>
+        <div class="text-sm text-text-secondary">Re-captures the exact same area as your last screenshot — useful for monitoring a specific part of the screen. Menu bar → <strong class="text-text-primary">Repeat Last Region</strong>.</div>
+      </div>
+      <div class="p-5 bg-surface-raised border border-surface-border rounded-xl">
+        <div class="font-medium text-text-primary mb-1">Saved Regions</div>
+        <div class="text-sm text-text-secondary mb-2">Name and save any region permanently. Perfect for recurring captures — a chart, a live feed, a notification area. Saved regions appear in the menu bar submenu.</div>
+        <div class="text-xs text-text-secondary bg-black/30 rounded-lg px-3 py-2">
+          Settings → Saved Regions → + → draw a region → name it
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Auto capture -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Auto Capture</h2>
+    <p class="text-text-secondary text-sm mb-3">Repeatedly captures at a set interval — like a time-lapse. Good for recording UI changes, build progress, game sessions, etc.</p>
+    <div class="text-xs text-text-secondary bg-black/30 rounded-lg px-3 py-2 font-mono">
+      Menu bar → Start Auto Capture → set interval in Settings → Capture → Auto Capture Interval
+    </div>
+  </section>
+
+  <!-- Delay -->
+  <section>
+    <h2 class="text-xl font-semibold mb-1">Capture Delay</h2>
+    <p class="text-text-secondary text-sm">Add a countdown before capture starts — useful for including hover states, dropdowns, or tooltips that disappear when you interact with them. Set in <strong class="text-text-primary">Settings → Capture → Capture Delay</strong>.</p>
+  </section>
+</DocsLayout>

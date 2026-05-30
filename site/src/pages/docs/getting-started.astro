@@ -1,0 +1,207 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+
+const base = import.meta.env.BASE_URL;
+---
+
+<DocsLayout title="Getting Started" current="getting-started">
+  <h1 class="text-3xl font-bold mb-2">Getting Started</h1>
+  <p class="text-text-secondary mb-10">Install Reticle and take your first screenshot in about 5 minutes.</p>
+
+  <!-- Requirements -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Requirements</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {[
+        ['macOS 13 Ventura or later', 'Works on Ventura, Sonoma, Sequoia and newer.'],
+        ['Apple Silicon or Intel Mac', 'Native support for both chip families.'],
+        ['Xcode (free)', 'Used to build and run the app. Available on the Mac App Store.'],
+        ['~500 MB free disk space', 'For Xcode toolchain and build artifacts.'],
+      ].map(([label, note]) => (
+        <div class="flex gap-3 p-4 bg-surface-raised border border-surface-border rounded-xl">
+          <span class="text-accent mt-0.5">✓</span>
+          <div>
+            <div class="text-sm font-medium text-text-primary">{label}</div>
+            <div class="text-xs text-text-secondary mt-0.5">{note}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Step 1: Xcode -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Step 1 — Install Xcode</h2>
+    <p class="text-text-secondary text-sm mb-5">Xcode is Apple's free development tool. You need it to build Reticle (until a DMG is available).</p>
+
+    <div class="space-y-3">
+      <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+        <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">1</span>
+        <div class="text-sm text-text-secondary">
+          Open the <strong class="text-text-primary">Mac App Store</strong> on your Mac.
+        </div>
+      </div>
+      <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+        <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">2</span>
+        <div class="text-sm text-text-secondary">
+          Search for <strong class="text-text-primary">"Xcode"</strong> and click <strong class="text-text-primary">Get</strong>. It's free and made by Apple.
+        </div>
+      </div>
+      <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+        <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">3</span>
+        <div class="text-sm text-text-secondary">
+          Wait for it to download and install (~5 GB). Launch it once when done — it will ask to install additional components. Accept.
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 p-4 bg-surface-raised border border-surface-border rounded-xl text-sm text-text-secondary">
+      <strong class="text-text-primary">Already a developer?</strong> Skip Xcode and just run
+      <code class="bg-black/40 px-1.5 py-0.5 rounded font-mono text-xs text-text-primary">swift build -c release</code>
+      from the project folder.
+    </div>
+  </section>
+
+  <!-- Step 2: Download -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Step 2 — Download Reticle</h2>
+    <p class="text-text-secondary text-sm mb-5">No GitHub account needed — just download a ZIP file.</p>
+
+    <div class="space-y-3">
+      <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+        <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">1</span>
+        <div class="text-sm text-text-secondary">
+          Go to <a href="https://github.com/croc100/Reticle" target="_blank" class="text-accent hover:underline font-medium">github.com/croc100/Reticle</a> in your browser.
+        </div>
+      </div>
+      <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+        <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">2</span>
+        <div class="text-sm text-text-secondary">
+          Click the green <strong class="text-text-primary">Code</strong> button near the top of the page, then click <strong class="text-text-primary">Download ZIP</strong>.
+        </div>
+      </div>
+      <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+        <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">3</span>
+        <div class="text-sm text-text-secondary">
+          Open your <strong class="text-text-primary">Downloads</strong> folder and double-click the ZIP to unzip it. You'll get a folder called <code class="bg-black/40 px-1 rounded font-mono text-xs text-text-primary">Reticle-main</code>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 3: Open in Xcode -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Step 3 — Open in Xcode & Run</h2>
+    <p class="text-text-secondary text-sm mb-5">Xcode will automatically handle everything once you open the project.</p>
+
+    <div class="space-y-3">
+      <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+        <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">1</span>
+        <div class="text-sm text-text-secondary">
+          Inside the <code class="bg-black/40 px-1 rounded font-mono text-xs text-text-primary">Reticle-main</code> folder, find the file named <strong class="text-text-primary">Package.swift</strong> and double-click it. It will open in Xcode.
+        </div>
+      </div>
+      <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+        <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">2</span>
+        <div class="text-sm text-text-secondary">
+          In Xcode's toolbar at the top, click the scheme selector (it may say "My Mac" or something similar) and choose <strong class="text-text-primary">ReticleApp</strong>.
+        </div>
+      </div>
+      <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+        <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">3</span>
+        <div class="text-sm text-text-secondary">
+          Click the <strong class="text-text-primary">▶ Run</strong> button (or press <kbd class="bg-black/40 border border-surface-border rounded px-1.5 py-0.5 text-xs font-mono">⌘R</kbd>). Xcode will build Reticle and launch it.
+        </div>
+      </div>
+      <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+        <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">4</span>
+        <div class="text-sm text-text-secondary">
+          First build takes 1–3 minutes. After that, you'll see a small <strong class="text-text-primary">Reticle icon in your menu bar</strong> (top-right of your screen).
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 4: Permissions -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Step 4 — Grant Permissions</h2>
+    <p class="text-text-secondary text-sm mb-5">macOS requires explicit permission for apps to record your screen. Reticle will prompt you automatically.</p>
+
+    <div class="space-y-3">
+      <div class="p-5 bg-surface-raised border border-surface-border rounded-xl">
+        <div class="flex items-start gap-3 mb-3">
+          <span class="text-xl">🎥</span>
+          <div>
+            <div class="font-medium text-text-primary mb-1">Screen Recording</div>
+            <div class="text-sm text-text-secondary">Required for all capture. When prompted, click <strong class="text-text-primary">Open System Settings</strong> → toggle the switch next to Reticle → re-launch Reticle.</div>
+          </div>
+        </div>
+        <div class="text-xs text-text-secondary bg-black/30 rounded-lg px-3 py-2 font-mono">
+          System Settings → Privacy & Security → Screen Recording → Reticle ✓
+        </div>
+      </div>
+
+      <div class="p-5 bg-surface-raised border border-surface-border rounded-xl">
+        <div class="flex items-start gap-3 mb-3">
+          <span class="text-xl">♿️</span>
+          <div>
+            <div class="font-medium text-text-primary mb-1">Accessibility</div>
+            <div class="text-sm text-text-secondary">Required for scrolling screenshots and global hotkeys. Same process — System Settings → toggle Reticle.</div>
+          </div>
+        </div>
+        <div class="text-xs text-text-secondary bg-black/30 rounded-lg px-3 py-2 font-mono">
+          System Settings → Privacy & Security → Accessibility → Reticle ✓
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 p-4 border border-yellow-500/20 bg-yellow-500/5 rounded-xl text-sm text-text-secondary">
+      <strong class="text-yellow-400">⚠️ After granting permissions</strong>, you need to quit and relaunch Reticle for the permissions to take effect.
+    </div>
+  </section>
+
+  <!-- First capture -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-1">Step 5 — Take Your First Screenshot</h2>
+    <p class="text-text-secondary text-sm mb-5">You're ready. Here's the basic flow.</p>
+
+    <div class="space-y-3">
+      {[
+        ['Click the Reticle icon in the menu bar', 'It lives in the top-right of your screen, next to the clock.'],
+        ['Choose "Capture Region"', 'Or press your configured hotkey (default: ⌃⌘4).'],
+        ['Your screen freezes — drag to select an area', 'Or click a window to instantly capture it.'],
+        ['Use the toolbar to annotate (optional)', 'The toolbar slides in from the top. Draw, highlight, blur, add text…'],
+        ['Press Return or click Done', 'The screenshot is copied to your clipboard and/or saved automatically.'],
+      ].map(([step, note], i) => (
+        <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
+          <span class="text-lg font-bold text-accent flex-shrink-0 w-6 text-center">{i + 1}</span>
+          <div>
+            <div class="text-sm font-medium text-text-primary">{step}</div>
+            <div class="text-xs text-text-secondary mt-0.5">{note}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Next steps -->
+  <section>
+    <h2 class="text-xl font-semibold mb-4">What's next?</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {[
+        { href: `${base}docs/capture/`,   icon: '📸', label: 'Capture Modes',    desc: 'Region, full-screen, window, scroll, auto…' },
+        { href: `${base}docs/annotate/`,  icon: '✏️', label: 'Annotation Tools', desc: 'All 21 tools explained.' },
+        { href: `${base}docs/hotkeys/`,   icon: '⌨️', label: 'Set up Hotkeys',   desc: 'Capture with a keypress from anywhere.' },
+        { href: `${base}docs/uploads/`,   icon: '☁️', label: 'Cloud Uploads',    desc: 'Imgur, S3, SFTP and custom endpoints.' },
+      ].map(item => (
+        <a href={item.href} class="flex gap-3 p-4 bg-surface-raised border border-surface-border rounded-xl hover:border-text-secondary/40 transition-colors">
+          <span class="text-xl">{item.icon}</span>
+          <div>
+            <div class="text-sm font-medium text-text-primary">{item.label}</div>
+            <div class="text-xs text-text-secondary mt-0.5">{item.desc}</div>
+          </div>
+        </a>
+      ))}
+    </div>
+  </section>
+</DocsLayout>

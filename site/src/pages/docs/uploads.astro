@@ -1,0 +1,71 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+const base = import.meta.env.BASE_URL;
+---
+
+<DocsLayout title="Uploads" current="uploads">
+  <h1 class="text-3xl font-bold mb-2">Cloud Uploads</h1>
+  <p class="text-text-secondary mb-10">Send your screenshot to the internet automatically after capture.</p>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Imgur <span class="text-sm font-normal text-text-secondary ml-1">(easiest, no account needed)</span></h2>
+    <p class="text-sm text-text-secondary mb-4">Imgur is a free image hosting service. No sign-up needed for anonymous uploads.</p>
+    <ol class="space-y-2">
+      {[
+        'Settings → Uploads → Destination → Imgur.',
+        'Leave the Client ID blank for anonymous uploads (images may be deleted after 6 months).',
+        'For permanent uploads, create a free Imgur account and register an API application to get a Client ID.',
+        'Enable "Upload" in After Capture settings.',
+      ].map((s, i) => (
+        <li class="flex gap-3 text-sm text-text-secondary">
+          <span class="text-accent font-bold flex-shrink-0">{i + 1}.</span> {s}
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Amazon S3 / Backblaze B2 / Cloudflare R2</h2>
+    <p class="text-sm text-text-secondary mb-4">All three services use the S3-compatible API. Reticle supports all of them with the same settings.</p>
+    <div class="space-y-2">
+      {[
+        ['Bucket', 'The name of your storage bucket.'],
+        ['Region', 'e.g. us-east-1 for S3, auto for R2, us-west-004 for B2.'],
+        ['Endpoint', 'Leave blank for AWS S3. Required for B2 and R2 — find it in your dashboard.'],
+        ['Access Key ID', 'From your provider\'s IAM or API keys section.'],
+        ['Secret Access Key', 'The corresponding secret. Stored encrypted on your Mac.'],
+        ['Path prefix', 'Optional folder prefix — e.g. screenshots/. Uploads go to bucket/screenshots/filename.png.'],
+        ['ACL', 'Set to public-read if you want direct links. Leave blank if you use CloudFront or Cloudflare as a CDN front.'],
+      ].map(([label, note]) => (
+        <div class="flex gap-3 items-start p-3 bg-surface-raised border border-surface-border rounded-lg">
+          <span class="text-xs font-mono text-accent w-28 flex-shrink-0 mt-0.5">{label}</span>
+          <span class="text-sm text-text-secondary">{note}</span>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">FTP / SFTP</h2>
+    <p class="text-sm text-text-secondary mb-4">Upload directly to any server you have FTP or SFTP access to.</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {[
+        ['Host', 'Server hostname or IP address.'],
+        ['Port', '21 for FTP, 22 for SFTP.'],
+        ['Username / Password', 'Your server credentials.'],
+        ['Remote path', 'The directory on the server where files will be placed.'],
+        ['Base URL', 'The public URL that maps to the remote path, so Reticle can copy a shareable link after upload.'],
+      ].map(([label, note]) => (
+        <div class="p-3 bg-surface-raised border border-surface-border rounded-lg">
+          <div class="text-xs font-mono text-accent mb-0.5">{label}</div>
+          <div class="text-xs text-text-secondary">{note}</div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-semibold mb-4">Custom HTTP Uploader</h2>
+    <p class="text-sm text-text-secondary mb-2">Wire up any API endpoint. <a href={`${base}docs/uploaders/`} class="text-accent hover:underline">See the full guide →</a></p>
+  </section>
+</DocsLayout>

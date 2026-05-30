@@ -1,0 +1,92 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  current?: string;
+}
+
+const { title, description, current } = Astro.props;
+const base = import.meta.env.BASE_URL;
+
+const sections = [
+  {
+    label: 'Start here',
+    links: [
+      { href: `${base}docs/getting-started/`, label: 'Getting Started', key: 'getting-started' },
+      { href: `${base}docs/permissions/`,     label: 'Permissions',     key: 'permissions' },
+    ],
+  },
+  {
+    label: 'Capture',
+    links: [
+      { href: `${base}docs/capture/`,  label: 'Capture Modes',   key: 'capture' },
+      { href: `${base}docs/annotate/`, label: 'Annotation Tools', key: 'annotate' },
+    ],
+  },
+  {
+    label: 'Output',
+    links: [
+      { href: `${base}docs/after-capture/`, label: 'After Capture', key: 'after-capture' },
+      { href: `${base}docs/uploads/`,       label: 'Uploads',        key: 'uploads' },
+    ],
+  },
+  {
+    label: 'Advanced',
+    links: [
+      { href: `${base}docs/hotkeys/`,   label: 'Hotkeys',          key: 'hotkeys' },
+      { href: `${base}docs/workflows/`, label: 'Workflows',         key: 'workflows' },
+      { href: `${base}docs/uploaders/`, label: 'Custom Uploader',   key: 'uploaders' },
+    ],
+  },
+];
+---
+
+<BaseLayout title={title ? `${title} — Reticle Docs` : 'Docs — Reticle'} description={description}>
+  <Header active="docs" />
+
+  <div class="max-w-5xl mx-auto px-6 pt-24 pb-24 flex gap-10 min-h-screen">
+    <!-- Sidebar -->
+    <aside class="hidden lg:block w-52 flex-shrink-0">
+      <div class="sticky top-24 space-y-7">
+        <a href={`${base}docs/`}
+           class="flex items-center gap-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors mb-2">
+          ← All docs
+        </a>
+        {sections.map(sec => (
+          <div>
+            <div class="text-[11px] font-semibold uppercase tracking-widest text-text-secondary mb-2 px-2">
+              {sec.label}
+            </div>
+            <ul class="space-y-0.5">
+              {sec.links.map(link => (
+                <li>
+                  <a
+                    href={link.href}
+                    class={`block text-sm px-2 py-1.5 rounded-md transition-colors ${
+                      current === link.key
+                        ? 'bg-accent/10 text-accent font-medium'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
+                    }`}
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 min-w-0 pt-4">
+      <slot />
+    </main>
+  </div>
+
+  <Footer />
+</BaseLayout>

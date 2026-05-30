@@ -1,0 +1,103 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+
+const tools = [
+  {
+    group: 'Shapes',
+    items: [
+      { icon: '▭', name: 'Rectangle', desc: 'Draw a rectangle. Hold Shift for a perfect square. Change fill, stroke color, and line style (solid / dashed / dotted) in the toolbar options.' },
+      { icon: '○', name: 'Ellipse', desc: 'Draw an oval. Hold Shift for a perfect circle.' },
+      { icon: '╱', name: 'Line', desc: 'Draw a straight line. Hold Shift to snap to 0°, 45°, or 90° angles.' },
+      { icon: '→', name: 'Arrow', desc: 'Same as Line but with an arrowhead at the end. Shift snaps the angle.' },
+      { icon: '↜', name: 'Freehand Arrow', desc: 'Draw a curved arrow by dragging freely. Reticle smooths the path automatically.' },
+      { icon: '✏️', name: 'Freehand Pen', desc: 'Draw any shape freely. The stroke is smoothed using a cardinal spline for a clean look.' },
+    ],
+  },
+  {
+    group: 'Text',
+    items: [
+      { icon: 'T', name: 'Text', desc: 'Click anywhere to place a text box. Type, then click outside to confirm.' },
+      { icon: 'T̲', name: 'Text Outline', desc: 'Text with a contrasting outline — readable on any background.' },
+      { icon: '▬T', name: 'Text Background', desc: 'Text with a solid background fill for maximum readability.' },
+      { icon: '①', name: 'Step Number', desc: 'Auto-incrementing numbered circles — great for tutorials. Each new step automatically picks the next number. Drag to add a leader line from the number to any point.' },
+      { icon: '💬', name: 'Speech Balloon', desc: 'Place a callout bubble with a tail. Click to open a text input — it passes through so you can type without dismissing the overlay.' },
+    ],
+  },
+  {
+    group: 'Effects',
+    items: [
+      { icon: '🖍', name: 'Highlight', desc: 'Semi-transparent overlay — defaults to fluorescent yellow. Use the opacity slider to adjust. Color is independent of your stroke color so switching tools won\'t reset it.' },
+      { icon: '◉', name: 'Blur', desc: 'Gaussian blur. Drag to draw the blur region. Radius adjustable in the toolbar. Edge-accurate: Reticle expands the sample area to avoid dark borders at edges.' },
+      { icon: '⊞', name: 'Pixelate', desc: 'Pixelates (mosaic) a region. Useful for redacting information while keeping the shape visible. Pixel size adjustable.' },
+      { icon: '■', name: 'Blackout', desc: 'Solid black fill. The fastest way to hide sensitive content.' },
+      { icon: '◎', name: 'Spotlight', desc: 'Darkens the entire image except a circular region. Focuses the viewer\'s eye. Drag the circle to position it; drag an edge to resize.' },
+      { icon: '🔍', name: 'Magnify', desc: 'Places a circular loupe that zooms in on the area beneath it. Zoom level adjustable (1.5× – 8×). Useful for pointing out small UI details.' },
+    ],
+  },
+  {
+    group: 'Insert',
+    items: [
+      { icon: '📏', name: 'Ruler', desc: 'Draw a line that displays the pixel distance. Hold Shift to snap to 45° angles.' },
+      { icon: '↖', name: 'Mouse Cursor', desc: 'Stamps a macOS-style cursor at any position. Useful for pointing out where to click in tutorials. Size adjustable.' },
+      { icon: '😄', name: 'Emoji / Sticker', desc: 'Opens the emoji picker. Place any emoji as a large, crisp annotation.' },
+      { icon: '🖼', name: 'Image Insert', desc: 'Insert any image file on top of the screenshot. Drag to position; handles to resize.' },
+    ],
+  },
+  {
+    group: 'Selection & Editing',
+    items: [
+      { icon: '⊹', name: 'Select / Move', desc: 'Click any annotation to select it. Drag to move. Use the corner handles to resize. Rotation handle appears at the top. Hold Shift and click multiple annotations to select them all.' },
+      { icon: '⊡', name: 'Crop', desc: 'Drag to define the final crop region. The selection updates live — press Done to finalize.' },
+      { icon: '⌫', name: 'Eraser', desc: 'Click any annotation to remove it. For freehand pen strokes, the eraser trims point-by-point — you can erase part of a stroke without removing the whole thing.' },
+    ],
+  },
+];
+---
+
+<DocsLayout title="Annotation Tools" current="annotate">
+  <h1 class="text-3xl font-bold mb-2">Annotation Tools</h1>
+  <p class="text-text-secondary mb-4">21 tools — available in the toolbar at the top of the freeze overlay.</p>
+
+  <!-- Sticky mode callout -->
+  <div class="p-4 border border-accent/30 bg-accent/5 rounded-xl text-sm text-text-secondary mb-10">
+    <strong class="text-accent">Sticky mode:</strong> tools stay active after each annotation — draw a rectangle, then draw another, without clicking the button again. To switch tools, just click a different one. To cancel and go back to selection, press <kbd class="bg-black/40 border border-surface-border rounded px-1.5 py-0.5 text-xs font-mono">Escape</kbd>.
+  </div>
+
+  <!-- Common controls -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Common Controls</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {[
+        ['Color', 'The color swatch in the toolbar changes stroke/fill color for the current tool. Highlight has its own color, independent of other tools.'],
+        ['Line width', 'For shape and line tools — a stepper (1–12 px) appears in the toolbar.'],
+        ['Line style', 'Solid, dashed, or dotted — available for rectangle, ellipse, line, arrow, and pen.'],
+        ['Font size', 'Appears for text tools — 10–72 pt, adjustable by 2 pt increments.'],
+        ['Undo', 'Press ⌘Z to undo the last annotation. Works for all tools, unlimited times.'],
+        ['Delete', 'Select an annotation and press Delete or Backspace to remove it.'],
+      ].map(([label, note]) => (
+        <div class="p-4 bg-surface-raised border border-surface-border rounded-xl">
+          <div class="text-sm font-medium text-text-primary mb-1">{label}</div>
+          <div class="text-xs text-text-secondary">{note}</div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Tool groups -->
+  {tools.map(group => (
+    <section class="mb-12">
+      <h2 class="text-xl font-semibold mb-4">{group.group}</h2>
+      <div class="space-y-3">
+        {group.items.map(tool => (
+          <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl hover:border-surface-border/80 transition-colors">
+            <span class="text-xl w-8 text-center flex-shrink-0 mt-0.5">{tool.icon}</span>
+            <div>
+              <div class="text-sm font-medium text-text-primary mb-1">{tool.name}</div>
+              <div class="text-sm text-text-secondary leading-relaxed">{tool.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  ))}
+</DocsLayout>

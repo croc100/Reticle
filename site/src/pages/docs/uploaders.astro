@@ -1,0 +1,90 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Custom Uploader" current="uploaders">
+  <h1 class="text-3xl font-bold mb-2">Custom HTTP Uploader</h1>
+  <p class="text-text-secondary mb-10">Wire up any HTTP API as an upload destination using a simple JSON config.</p>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Config Format</h2>
+    <pre class="bg-surface-raised border border-surface-border rounded-xl p-5 text-sm font-mono text-text-secondary overflow-x-auto mb-4"><code>{`{
+  "name":         "My Server",
+  "url":          "https://example.com/upload",
+  "method":       "POST",
+  "fileField":    "file",
+  "headers": {
+    "Authorization": "Bearer YOUR_TOKEN"
+  },
+  "responsePath": "$.url"
+}`}</code></pre>
+    <div class="space-y-2">
+      {[
+        ['name', 'Display name — shown in the Settings dropdown.'],
+        ['url', 'The full endpoint URL that accepts the upload.'],
+        ['method', '"POST" or "PUT" — depends on your API.'],
+        ['fileField', 'The multipart form field name your server expects for the image file.'],
+        ['headers', 'Any request headers — auth tokens, content type overrides, etc.'],
+        ['responsePath', 'A dot-path into the JSON response to extract the public URL. $ refers to the root.'],
+      ].map(([field, desc]) => (
+        <div class="flex gap-3 items-start p-3 bg-surface-raised border border-surface-border rounded-lg">
+          <code class="text-xs font-mono text-accent bg-black/40 px-2 py-1 rounded flex-shrink-0">{field}</code>
+          <span class="text-sm text-text-secondary">{desc}</span>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Response Path Examples</h2>
+    <div class="space-y-3">
+      {[
+        {
+          label: 'Direct string response',
+          response: '"https://cdn.example.com/img/abc123.png"',
+          path: '$',
+        },
+        {
+          label: 'Nested URL field',
+          response: '{ "data": { "url": "https://..." } }',
+          path: '$.data.url',
+        },
+        {
+          label: 'Array of links',
+          response: '{ "links": ["https://..."] }',
+          path: '$.links[0]',
+        },
+      ].map(ex => (
+        <div class="p-4 bg-surface-raised border border-surface-border rounded-xl">
+          <div class="text-sm font-medium text-text-primary mb-2">{ex.label}</div>
+          <div class="text-xs font-mono bg-black/40 rounded px-3 py-2 text-text-secondary mb-2">{ex.response}</div>
+          <div class="text-xs text-text-secondary">responsePath: <code class="text-accent">{ex.path}</code></div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Adding a Custom Uploader</h2>
+    <ol class="space-y-2">
+      {[
+        'Create a .json file with the config above.',
+        'Open Settings → Uploads → Custom HTTP → Import Config.',
+        'Select your JSON file.',
+        'Reticle validates the config and adds it to the destination list.',
+        'Set it as your active destination and enable Upload in After Capture.',
+      ].map((s, i) => (
+        <li class="flex gap-3 text-sm text-text-secondary">
+          <span class="text-accent font-bold flex-shrink-0">{i + 1}.</span> {s}
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-semibold mb-4">ShareX Uploader Compatibility</h2>
+    <p class="text-sm text-text-secondary">
+      Reticle's custom uploader format is inspired by ShareX's SXCU format. Many ShareX custom uploader configs can be used in Reticle with minor adjustments. The main difference: Reticle uses <code class="text-accent font-mono text-xs">responsePath</code> instead of ShareX's <code class="text-text-primary font-mono text-xs">URL</code> field.
+    </p>
+  </section>
+</DocsLayout>

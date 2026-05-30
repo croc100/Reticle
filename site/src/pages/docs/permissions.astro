@@ -1,0 +1,82 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Permissions" current="permissions">
+  <h1 class="text-3xl font-bold mb-2">Permissions</h1>
+  <p class="text-text-secondary mb-10">Reticle needs two macOS permissions to work. Here's what they are and how to grant them.</p>
+
+  <section class="mb-12">
+    <div class="p-5 bg-surface-raised border border-surface-border rounded-xl mb-4">
+      <div class="flex items-start gap-4 mb-4">
+        <span class="text-3xl">🎥</span>
+        <div>
+          <h2 class="text-lg font-semibold text-text-primary mb-1">Screen Recording</h2>
+          <p class="text-sm text-text-secondary">Required for <strong class="text-text-primary">all</strong> capture modes. Without this, Reticle cannot take any screenshots.</p>
+        </div>
+      </div>
+      <ol class="space-y-2">
+        {[
+          'Open System Settings (Apple menu → System Settings).',
+          'Go to Privacy & Security → Screen Recording.',
+          'Find Reticle in the list and toggle it ON.',
+          'You may be prompted to enter your Mac password.',
+          'Quit and relaunch Reticle.',
+        ].map((step, i) => (
+          <li class="flex gap-3 text-sm text-text-secondary">
+            <span class="text-accent font-bold flex-shrink-0">{i + 1}.</span>
+            {step}
+          </li>
+        ))}
+      </ol>
+    </div>
+
+    <div class="p-5 bg-surface-raised border border-surface-border rounded-xl">
+      <div class="flex items-start gap-4 mb-4">
+        <span class="text-3xl">♿️</span>
+        <div>
+          <h2 class="text-lg font-semibold text-text-primary mb-1">Accessibility</h2>
+          <p class="text-sm text-text-secondary">Required for <strong class="text-text-primary">scrolling screenshot</strong> and <strong class="text-text-primary">global hotkeys</strong>. Other capture modes work without it.</p>
+        </div>
+      </div>
+      <ol class="space-y-2">
+        {[
+          'Open System Settings → Privacy & Security → Accessibility.',
+          'Click the + button and add Reticle, OR toggle it on if it already appears.',
+          'Enter your password if prompted.',
+          'Quit and relaunch Reticle.',
+        ].map((step, i) => (
+          <li class="flex gap-3 text-sm text-text-secondary">
+            <span class="text-accent font-bold flex-shrink-0">{i + 1}.</span>
+            {step}
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Why these permissions?</h2>
+    <div class="space-y-3 text-sm text-text-secondary">
+      <p>macOS requires apps to explicitly request permission before they can read screen content or control system-level input. This is a security feature — without your explicit grant, no app can spy on your screen.</p>
+      <p>Reticle uses Screen Recording only when you actively trigger a capture. It doesn't record in the background. The Accessibility permission is used only to listen for your configured global hotkeys and to synthesize scroll events for scroll capture.</p>
+      <p>You can revoke these permissions at any time in System Settings → Privacy & Security.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-semibold mb-4">Permission not showing up?</h2>
+    <div class="space-y-3">
+      {[
+        ['App doesn\'t appear in the list', 'Launch Reticle at least once, then try triggering a capture — macOS registers apps in the permission list on first use.'],
+        ['Toggle is greyed out', 'Make sure Reticle is running. Some MDM/corporate policies lock this setting — contact your IT admin.'],
+        ['Changes not taking effect', 'You must quit and fully relaunch Reticle after changing permissions. Cmd+Q from the menu bar, then reopen.'],
+      ].map(([problem, solution]) => (
+        <div class="p-4 bg-surface-raised border border-surface-border rounded-xl">
+          <div class="text-sm font-medium text-text-primary mb-1">{problem}</div>
+          <div class="text-sm text-text-secondary">{solution}</div>
+        </div>
+      ))}
+    </div>
+  </section>
+</DocsLayout>

@@ -3,53 +3,72 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 
-const sections = [
+const base = import.meta.env.BASE_URL;
+
+const cards = [
   {
+    icon: '🚀',
     title: 'Getting Started',
-    items: [
-      { label: 'Installation', anchor: 'installation' },
-      { label: 'Permissions', anchor: 'permissions' },
-      { label: 'First capture', anchor: 'first-capture' },
-    ],
+    desc: 'Install Reticle on your Mac and take your first screenshot — no GitHub account needed.',
+    href: `${base}docs/getting-started/`,
+    cta: 'Start here →',
+    highlight: true,
   },
   {
+    icon: '🔐',
+    title: 'Permissions',
+    desc: 'Grant Screen Recording and Accessibility — required for Reticle to work.',
+    href: `${base}docs/permissions/`,
+    cta: 'Read more →',
+  },
+  {
+    icon: '📸',
     title: 'Capture Modes',
-    items: [
-      { label: 'Region capture', anchor: 'region' },
-      { label: 'Full-screen & per-monitor', anchor: 'fullscreen' },
-      { label: 'Window picker', anchor: 'window' },
-      { label: 'Scrolling screenshot', anchor: 'scroll' },
-      { label: 'Saved regions', anchor: 'saved-regions' },
-      { label: 'Auto capture', anchor: 'auto-capture' },
-    ],
+    desc: 'Region, full-screen, window, scroll, auto-capture — all the ways to grab your screen.',
+    href: `${base}docs/capture/`,
+    cta: 'Read more →',
   },
   {
+    icon: '✏️',
     title: 'Annotation Tools',
-    items: [
-      { label: 'Toolbar overview', anchor: 'toolbar' },
-      { label: 'Shapes & lines', anchor: 'shapes' },
-      { label: 'Text tools', anchor: 'text' },
-      { label: 'Effects (blur, pixelate, spotlight)', anchor: 'effects' },
-      { label: 'Eraser & select', anchor: 'eraser' },
-    ],
+    desc: '21 tools — shapes, text, blur, highlight, arrows, step numbers and more.',
+    href: `${base}docs/annotate/`,
+    cta: 'Read more →',
   },
   {
+    icon: '⚡',
     title: 'After Capture',
-    items: [
-      { label: 'Clipboard, save, notify', anchor: 'output' },
-      { label: 'OCR', anchor: 'ocr' },
-      { label: 'Pin to screen', anchor: 'pin' },
-      { label: 'Cloud upload', anchor: 'upload' },
-    ],
+    desc: 'Copy to clipboard, save to file, OCR, pin to screen, open in viewer.',
+    href: `${base}docs/after-capture/`,
+    cta: 'Read more →',
   },
   {
-    title: 'Configuration',
-    items: [
-      { label: 'Global hotkeys', anchor: 'hotkeys' },
-      { label: 'Workflow profiles', anchor: 'workflows' },
-      { label: 'Filename tokens', anchor: 'naming' },
-      { label: 'Custom HTTP uploader', anchor: 'custom-uploader' },
-    ],
+    icon: '☁️',
+    title: 'Uploads',
+    desc: 'Imgur, Amazon S3, SFTP, and custom HTTP endpoints.',
+    href: `${base}docs/uploads/`,
+    cta: 'Read more →',
+  },
+  {
+    icon: '⌨️',
+    title: 'Hotkeys',
+    desc: 'Set global keyboard shortcuts for every capture mode and workflow.',
+    href: `${base}docs/hotkeys/`,
+    cta: 'Read more →',
+  },
+  {
+    icon: '🔗',
+    title: 'Workflows',
+    desc: 'Chain capture → annotate → upload into one-key automations.',
+    href: `${base}docs/workflows/`,
+    cta: 'Read more →',
+  },
+  {
+    icon: '🛠',
+    title: 'Custom Uploader',
+    desc: 'Wire up any HTTP API as an upload destination with a simple JSON config.',
+    href: `${base}docs/uploaders/`,
+    cta: 'Read more →',
   },
 ];
 ---
@@ -57,127 +76,37 @@ const sections = [
 <BaseLayout title="Docs — Reticle">
   <Header active="docs" />
 
-  <div class="max-w-5xl mx-auto px-6 pt-28 pb-24 flex gap-12">
-    <!-- Sidebar -->
-    <aside class="hidden lg:block w-52 flex-shrink-0 sticky top-28 self-start">
-      <nav class="space-y-6">
-        {sections.map(sec => (
+  <div class="max-w-5xl mx-auto px-6 pt-28 pb-24">
+    <h1 class="text-4xl font-bold mb-2">Documentation</h1>
+    <p class="text-text-secondary mb-12 text-lg">
+      Everything you need to get up and running with Reticle.
+      <br class="hidden sm:block"/>
+      <span class="text-sm">New here? Start with <a href={`${base}docs/getting-started/`} class="text-accent hover:underline">Getting Started</a>.</span>
+    </p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {cards.map(card => (
+        <a
+          href={card.href}
+          class={`group flex flex-col gap-3 p-5 rounded-xl border transition-all ${
+            card.highlight
+              ? 'border-accent/40 bg-accent/5 hover:bg-accent/10'
+              : 'border-surface-border bg-surface-raised hover:border-text-secondary/30'
+          }`}
+        >
+          <div class="text-2xl">{card.icon}</div>
           <div>
-            <div class="text-xs font-semibold uppercase tracking-widest text-text-secondary mb-2">{sec.title}</div>
-            <ul class="space-y-1">
-              {sec.items.map(item => (
-                <li>
-                  <a href={`#${item.anchor}`} class="text-sm text-text-secondary hover:text-text-primary transition-colors block py-0.5">
-                    {item.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <div class={`font-semibold mb-1 ${card.highlight ? 'text-accent' : 'text-text-primary'}`}>
+              {card.title}
+            </div>
+            <div class="text-sm text-text-secondary leading-relaxed">{card.desc}</div>
           </div>
-        ))}
-      </nav>
-    </aside>
-
-    <!-- Content -->
-    <main class="flex-1 min-w-0">
-      <h1 class="text-4xl font-bold mb-2">Documentation</h1>
-      <p class="text-text-secondary mb-12">Everything you need to get the most out of Reticle.</p>
-
-      <article class="prose prose-invert max-w-none space-y-16">
-
-        <!-- Getting Started -->
-        <section id="installation">
-          <h2 class="text-2xl font-semibold mb-4 text-text-primary">Installation</h2>
-          <p class="text-text-secondary mb-4">Signed DMG and Homebrew are coming in v1.0. Until then, build from source:</p>
-          <pre class="bg-surface-raised border border-surface-border rounded-xl p-5 text-sm font-mono text-text-secondary overflow-x-auto"><code>git clone https://github.com/croc100/Reticle.git
-cd Reticle
-swift build -c release
-# or open Package.swift in Xcode → select ReticleApp → Run</code></pre>
-        </section>
-
-        <section id="permissions">
-          <h2 class="text-2xl font-semibold mb-4 text-text-primary">Permissions</h2>
-          <div class="space-y-3">
-            {[
-              ['Screen Recording', 'Required for all capture modes. macOS will prompt on first launch — grant it in System Settings → Privacy & Security → Screen Recording.'],
-              ['Accessibility', 'Required for scroll capture and global hotkey recording. Grant in System Settings → Privacy & Security → Accessibility.'],
-            ].map(([name, desc]) => (
-              <div class="bg-surface-raised border border-surface-border rounded-xl p-4">
-                <div class="text-sm font-medium text-text-primary mb-1">{name}</div>
-                <div class="text-sm text-text-secondary">{desc}</div>
-              </div>
-            ))}
+          <div class={`text-sm mt-auto ${card.highlight ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} transition-colors`}>
+            {card.cta}
           </div>
-        </section>
-
-        <section id="first-capture">
-          <h2 class="text-2xl font-semibold mb-4 text-text-primary">First Capture</h2>
-          <p class="text-text-secondary">After launch, Reticle sits in your menu bar. Click the icon and choose <strong class="text-text-primary">Capture Region</strong> (or press your configured hotkey). The screen freezes — drag to select your region, annotate with the toolbar, then press <kbd class="bg-surface-raised border border-surface-border rounded px-1.5 py-0.5 text-xs font-mono">Return</kbd> or click Done.</p>
-        </section>
-
-        <div class="border-t border-surface-border"></div>
-
-        <!-- Capture Modes -->
-        <section id="region">
-          <h2 class="text-2xl font-semibold mb-4 text-text-primary">Region Capture</h2>
-          <p class="text-text-secondary mb-4">The primary capture mode. The screen freezes into a full-resolution overlay. You can:</p>
-          <ul class="space-y-2 text-text-secondary text-sm">
-            <li class="flex gap-2"><span class="text-accent">→</span> Drag to draw a selection</li>
-            <li class="flex gap-2"><span class="text-accent">→</span> Click a window to instantly capture it (ShareX-style)</li>
-            <li class="flex gap-2"><span class="text-accent">→</span> Hold <kbd class="bg-surface-raised border border-surface-border rounded px-1 text-xs font-mono">Shift</kbd> while dragging to constrain to a square</li>
-            <li class="flex gap-2"><span class="text-accent">→</span> Annotate before finalizing — all tools stay active (sticky mode)</li>
-          </ul>
-        </section>
-
-        <section id="toolbar">
-          <h2 class="text-2xl font-semibold mb-4 text-text-primary">Toolbar Overview</h2>
-          <p class="text-text-secondary mb-4">The annotation toolbar slides in from the top of the frozen screen. Tools are grouped into five sections: Region, Shapes, Text, Insert, and Effects.</p>
-          <p class="text-text-secondary"><strong class="text-text-primary">Sticky mode:</strong> clicking a tool keeps it active until you explicitly switch — draw multiple rectangles, place multiple blur regions, etc. without re-clicking the tool each time.</p>
-        </section>
-
-        <section id="hotkeys">
-          <h2 class="text-2xl font-semibold mb-4 text-text-primary">Global Hotkeys</h2>
-          <p class="text-text-secondary mb-4">Configure in <strong class="text-text-primary">Settings → Hotkeys</strong>. All hotkeys use Carbon-level global registration — they work even when Reticle is in the background.</p>
-          <div class="overflow-x-auto rounded-xl border border-surface-border">
-            <table class="w-full text-sm">
-              <thead class="bg-surface-raised border-b border-surface-border">
-                <tr>
-                  <th class="text-left px-5 py-3 text-text-secondary font-medium">Action</th>
-                  <th class="text-left px-5 py-3 text-text-secondary font-medium">Default</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ['Capture Region', '⌃⌘4'],
-                  ['Capture Full Screen', '⌃⌘3'],
-                  ['Clipboard History', '⌘⇧V'],
-                ].map(([action, key]) => (
-                  <tr class="border-b border-surface-border last:border-0">
-                    <td class="px-5 py-3 text-text-secondary">{action}</td>
-                    <td class="px-5 py-3 font-mono text-xs text-text-primary">{key}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section id="custom-uploader">
-          <h2 class="text-2xl font-semibold mb-4 text-text-primary">Custom HTTP Uploader</h2>
-          <p class="text-text-secondary mb-4">Define any HTTP endpoint as an upload destination using a JSON config:</p>
-          <pre class="bg-surface-raised border border-surface-border rounded-xl p-5 text-sm font-mono text-text-secondary overflow-x-auto"><code>{`{
-  "name": "My Server",
-  "url": "https://example.com/upload",
-  "method": "POST",
-  "fileField": "file",
-  "headers": { "Authorization": "Bearer TOKEN" },
-  "responsePath": "$.url"
-}`}</code></pre>
-          <p class="text-text-secondary text-sm mt-3"><code class="text-text-primary font-mono">responsePath</code> is a dot-path into the JSON response to extract the public URL.</p>
-        </section>
-
-      </article>
-    </main>
+        </a>
+      ))}
+    </div>
   </div>
 
   <Footer />
