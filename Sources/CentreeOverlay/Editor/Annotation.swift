@@ -44,6 +44,8 @@ public enum AnnotationTool: String, CaseIterable {
 class Annotation: NSObject {
     var color: NSColor
     var lineWidth: CGFloat
+    /// Stroke dash style for this annotation (only affects stroke-based shapes).
+    var lineStyle: LineStyle = .solid
 
     /// Clockwise rotation in radians (visual, in the flipped NSView coordinate system).
     var rotation: CGFloat = 0
@@ -68,6 +70,22 @@ class Annotation: NSObject {
 
     func draw(in rect: NSRect) {}
     func hitTest(_ point: NSPoint) -> Bool { false }
+
+    /// Applies the annotation's `lineStyle` dash pattern to `path`.
+    /// Call this after setting `lineWidth`; it may override `lineCapStyle` for dotted lines.
+    func applyLineDash(to path: NSBezierPath) {
+        switch lineStyle {
+        case .solid:
+            break
+        case .dashed:
+            let dash = max(lineWidth * 4, 6)
+            let gap  = max(lineWidth * 2, 4)
+            path.setLineDash([dash, gap], count: 2, phase: 0)
+        case .dotted:
+            path.lineCapStyle = .round
+            path.setLineDash([0, max(lineWidth * 2.5, 4)], count: 2, phase: 0)
+        }
+    }
 
     /// Draws the annotation with its `rotation` transform applied via NSAffineTransform
     /// (which correctly accounts for the flipped NSView coordinate system).
@@ -100,6 +118,7 @@ final class RectAnnotation: Annotation, RectResizable {
         color.setStroke()
         let path = NSBezierPath(rect: rect)
         path.lineWidth = lineWidth
+        applyLineDash(to: path)
         path.stroke()
     }
 
@@ -124,6 +143,7 @@ final class EllipseAnnotation: Annotation, RectResizable {
         color.setStroke()
         let path = NSBezierPath(ovalIn: rect)
         path.lineWidth = lineWidth
+        applyLineDash(to: path)
         path.stroke()
     }
 
@@ -154,6 +174,7 @@ final class LineAnnotation: Annotation {
         path.lineCapStyle = .round
         path.move(to: start)
         path.line(to: end)
+        applyLineDash(to: path)
         path.stroke()
     }
 
@@ -175,10 +196,13 @@ final class ArrowAnnotation: Annotation {
     override func draw(in _: NSRect) {
         guard hypot(end.x - start.x, end.y - start.y) > 4 else { return }
         color.setStroke(); color.setFill()
+        // Shaft — apply dash style
         let path = NSBezierPath()
         path.lineWidth = lineWidth
         path.move(to: start); path.line(to: end)
+        applyLineDash(to: path)
         path.stroke()
+        // Arrowhead — always solid regardless of lineStyle
         let angle = atan2(end.y - start.y, end.x - start.x)
         let hl: CGFloat = max(12, lineWidth * 4), ha: CGFloat = .pi / 6
         let p1 = NSPoint(x: end.x - hl * cos(angle - ha), y: end.y - hl * sin(angle - ha))
@@ -204,6 +228,7 @@ final class FreehandArrowAnnotation: Annotation {
     override func draw(in _: NSRect) {
         guard points.count > 1 else { return }
         color.setStroke(); color.setFill()
+        // Shaft — apply dash style
         let path = NSBezierPath()
         path.lineWidth = lineWidth
         path.lineCapStyle = .round; path.lineJoinStyle = .round
@@ -223,9 +248,10 @@ final class FreehandArrowAnnotation: Annotation {
         } else {
             path.line(to: points[1])
         }
+        applyLineDash(to: path)
         path.stroke()
 
-        // Arrowhead at last point, direction from second-to-last to last
+        // Arrowhead at last point — always solid regardless of lineStyle
         let last  = points[points.count - 1]
         let prev  = points.count > 3 ? points[points.count - 4] : points[points.count - 2]
         let angle = atan2(last.y - prev.y, last.x - prev.x)
@@ -415,6 +441,7 @@ final class PenAnnotation: Annotation {
             path.move(to: points[0])
             path.line(to: points[1])
         }
+        applyLineDash(to: path)
         path.stroke()
     }
 

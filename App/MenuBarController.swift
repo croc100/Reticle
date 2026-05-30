@@ -9,11 +9,19 @@ struct MenuBarMenuView: View {
     @Default(.savedRegions)    var savedRegions
     @Default(.lastCaptureRect) var lastCaptureRect
     @Default(.workflowProfiles) var workflowProfiles
+    @Default(.regionHotkeyKeyCode)    var regionCode
+    @Default(.regionHotkeyMods)       var regionMods
+    @Default(.fullscreenHotkeyKeyCode) var fullCode
+    @Default(.fullscreenHotkeyMods)   var fullMods
     @ObservedObject private var autoCapture = AutoCaptureManager.shared
 
     var body: some View {
-        Button("Capture Region        ⌘⇧4") { coordinator.captureWithOverlay() }
-        Button("Capture Full Screen   ⌘⇧3") { coordinator.captureFullScreen() }
+        Button(hotkeyLabel("Capture Region", keyCode: regionCode, mods: regionMods)) {
+            coordinator.captureWithOverlay()
+        }
+        Button(hotkeyLabel("Capture Full Screen", keyCode: fullCode, mods: fullMods)) {
+            coordinator.captureFullScreen()
+        }
 
         // Per-monitor capture submenu (populated from connected NSScreens)
         Menu("Capture Screen") {
@@ -71,8 +79,12 @@ struct MenuBarMenuView: View {
         Divider()
 
         Button("Settings…") {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            NSApp.activate(ignoringOtherApps: true)
+            // Activate first, then show settings — the menu needs to dismiss before
+            // the window can reliably come to front in an accessory-policy app.
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            }
         }
         .keyboardShortcut(",", modifiers: .command)
 
@@ -83,6 +95,14 @@ struct MenuBarMenuView: View {
     }
 
     // MARK: - Helpers
+
+    /// Builds a menu label like "Capture Region      ⌃⌘4" using live Defaults values.
+    private func hotkeyLabel(_ title: String, keyCode: UInt32, mods: UInt32) -> String {
+        guard keyCode > 0, let key = Key(carbonKeyCode: keyCode) else { return title }
+        let shortcut = CarbonModifiers.symbol(mods) + key.description.uppercased()
+        // Pad with spaces so shortcut aligns roughly to the right
+        return title.padding(toLength: max(title.count, 24), withPad: " ", startingAt: 0) + shortcut
+    }
 
     private func workflowLabel(_ profile: StoredWorkflowProfile) -> String {
         guard profile.keyCode > 0, let key = Key(carbonKeyCode: profile.keyCode) else {

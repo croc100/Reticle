@@ -35,6 +35,8 @@ final class OverlayView: NSView {
     private var activeHandle: Int?   // 0-7 = rect handle index, 10-11 = line endpoint index
 
     // Freehand / Polygon region
+    /// Saves the window rect that was hovered at mouseDown so mouseUp can use it for single-click capture.
+    private var clickedWindowRect: NSRect? = nil
     private var freehandPoints: [NSPoint] = []
     private var isPolygonMode: Bool = false   // true = click-to-add-point; false = drag-to-draw
     private var editingTextField: NSTextField?
@@ -61,10 +63,14 @@ final class OverlayView: NSView {
         } else {
             effectiveSel = sel
         }
+        // Derive scale from actual image/view ratio rather than the stored scaleFactor.
+        // On non-standard HiDPI configurations (e.g. "More Space" mode on MacBook Pro)
+        // NSScreen.backingScaleFactor ≠ image.width / view.width, causing coordinate drift.
+        let effectiveSF = bounds.width > 0 ? CGFloat(baseCGImage.width) / bounds.width : scaleFactor
         guard let final = vm.renderFinalImage(baseCGImage: baseCGImage,
                                               selectionRect: effectiveSel,
-                                              scaleFactor: scaleFactor) else { return }
-        delegate?.overlayView(self, didFinish: final, sourceRect: toScreen(effectiveSel), scaleFactor: scaleFactor)
+                                              scaleFactor: effectiveSF) else { return }
+        delegate?.overlayView(self, didFinish: final, sourceRect: toScreen(effectiveSel), scaleFactor: effectiveSF)
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -177,35 +183,45 @@ final class OverlayView: NSView {
 
     private func drawBlur(_ ann: BlurAnnotation) {
         guard ann.rect.width > 4, ann.rect.height > 4 else { return }
-        let pr = pixelRect(ann.rect)
-        guard let cropped = baseCGImage.cropping(to: pr) else { return }
+        // Expand source crop by radius so CIGaussianBlur has real neighbours at all edges.
+        let r = ann.radius * scaleFactor
+        let pr  = pixelRect(ann.rect)
+        let imgBounds = CGRect(x: 0, y: 0, width: CGFloat(baseCGImage.width),
+                               height: CGFloat(baseCGImage.height))
+        let expanded  = pr.insetBy(dx: -r, dy: -r).intersection(imgBounds)
+        guard !expanded.isEmpty, let cropped = baseCGImage.cropping(to: expanded) else { return }
+
         let ci = CIImage(cgImage: cropped)
         guard let f = CIFilter(name: "CIGaussianBlur") else { return }
         f.setValue(ci, forKey: kCIInputImageKey)
         f.setValue(max(ann.radius, 1.0), forKey: kCIInputRadiusKey)
         guard let out = f.outputImage else { return }
-        let sz = CGSize(width: pr.width, height: pr.height)
-        let shifted = out.transformed(by: .init(translationX: -out.extent.minX, y: -out.extent.minY))
-        if let cg = OverlayViewModel.ciContext.createCGImage(shifted, from: CGRect(origin: .zero, size: sz)) {
-            NSImage(cgImage: cg, size: ann.rect.size)
-                .draw(in: ann.rect, from: .zero, operation: .sourceOver, fraction: 1.0)
-        }
+
+        // The region we actually want is pr relative to expanded's origin.
+        let innerRect = CGRect(x: pr.minX - expanded.minX,
+                               y: pr.minY - expanded.minY,
+                               width: pr.width, height: pr.height)
+        guard let ctx = NSGraphicsContext.current?.cgContext,
+              let cg = OverlayViewModel.ciContext.createCGImage(out, from: innerRect) else { return }
+        drawCGImageFlipped(cg, in: ann.rect, ctx: ctx)
     }
 
     private func drawPixelate(_ ann: PixelateAnnotation) {
         guard ann.rect.width > 4, ann.rect.height > 4 else { return }
         let pr = pixelRect(ann.rect)
-        guard let cropped = baseCGImage.cropping(to: pr) else { return }
+        let imgBounds = CGRect(x: 0, y: 0, width: CGFloat(baseCGImage.width),
+                               height: CGFloat(baseCGImage.height))
+        guard !pr.intersection(imgBounds).isEmpty,
+              let cropped = baseCGImage.cropping(to: pr.intersection(imgBounds)) else { return }
         let ci = CIImage(cgImage: cropped)
         guard let f = CIFilter(name: "CIPixellate") else { return }
         f.setValue(ci, forKey: kCIInputImageKey)
         f.setValue(max(ann.pixelSize * scaleFactor / 2, 2.0), forKey: kCIInputScaleKey)
         guard let out = f.outputImage else { return }
         let sz = CGSize(width: pr.width, height: pr.height)
-        if let cg = OverlayViewModel.ciContext.createCGImage(out, from: CGRect(origin: .zero, size: sz)) {
-            NSImage(cgImage: cg, size: ann.rect.size)
-                .draw(in: ann.rect, from: .zero, operation: .sourceOver, fraction: 1.0)
-        }
+        guard let cg = OverlayViewModel.ciContext.createCGImage(out, from: CGRect(origin: .zero, size: sz)),
+              let ctx = NSGraphicsContext.current?.cgContext else { return }
+        drawCGImageFlipped(cg, in: ann.rect, ctx: ctx)
     }
 
     private func drawMagnify(_ ann: MagnifyAnnotation) {
@@ -220,13 +236,27 @@ final class OverlayView: NSView {
         }
         ctx.saveGState()
         NSBezierPath(ovalIn: ann.rect).addClip()
-        NSImage(cgImage: cropped, size: ann.rect.size)
-            .draw(in: ann.rect, from: .zero, operation: .sourceOver, fraction: 1.0)
+        drawCGImageFlipped(cropped, in: ann.rect, ctx: ctx)
         ctx.restoreGState()
         // Border
         ann.color.setStroke()
         let border = NSBezierPath(ovalIn: ann.rect)
         border.lineWidth = ann.lineWidth; border.stroke()
+    }
+
+    /// Draws `image` (row 0 = bottom, CIImage/CG convention) into `rect` in the flipped NSView.
+    /// Cancels the view's flip transform before drawing — identical to `drawBackground(in:clippedTo:)`.
+    private func drawCGImageFlipped(_ image: CGImage, in rect: NSRect, ctx: CGContext) {
+        ctx.saveGState()
+        // After this flip, the coordinate system matches baseCGImage (y=0=bottom).
+        let h = bounds.height
+        ctx.translateBy(x: 0, y: h)
+        ctx.scaleBy(x: 1, y: -1)
+        // Convert the annotation rect from flipped view coords to CG coords.
+        let cgRect = CGRect(x: rect.minX, y: h - rect.maxY,
+                            width: rect.width, height: rect.height)
+        ctx.draw(image, in: cgRect)
+        ctx.restoreGState()
     }
 
     private func drawSpotlightOverlay(_ spotlights: [SpotlightAnnotation]) {
@@ -244,12 +274,18 @@ final class OverlayView: NSView {
     }
 
     // Converts a view-coordinate rect (flipped, y=0=top) to a CGImage pixel rect (y=0=bottom).
+    // Uses the actual image/view ratio rather than the stored scaleFactor so the mapping
+    // stays accurate even when the display's HiDPI configuration differs from backingScaleFactor
+    // (e.g. non-default resolutions on MacBook Pro 14"/16").
     private func pixelRect(_ r: NSRect) -> CGRect {
+        let imgW = CGFloat(baseCGImage.width)
         let imgH = CGFloat(baseCGImage.height)
-        return CGRect(x: r.minX * scaleFactor,
-                      y: imgH - r.maxY * scaleFactor,
-                      width: r.width * scaleFactor,
-                      height: r.height * scaleFactor)
+        let sfX = bounds.width  > 0 ? imgW / bounds.width  : scaleFactor
+        let sfY = bounds.height > 0 ? imgH / bounds.height : scaleFactor
+        return CGRect(x: r.minX * sfX,
+                      y: imgH - r.maxY * sfY,
+                      width: r.width * sfX,
+                      height: r.height * sfY)
     }
 
     // MARK: - Freehand region
@@ -667,6 +703,8 @@ final class OverlayView: NSView {
                 freehandPoints = [pt]
             }
         case .region:
+            // Save the window under the cursor so a single click captures it immediately (ShareX behaviour).
+            clickedWindowRect = hoveredWindowRect
             liveSelectionRect = nil; hoveredWindowRect = nil
         case .select:
             // Check if clicking on a resize/endpoint/rotation handle of the currently selected annotation
@@ -716,6 +754,7 @@ final class OverlayView: NSView {
             moveOrigin = pt
         case .freehandArrow:
             let fa = FreehandArrowAnnotation(color: vm.strokeColor, lineWidth: vm.lineWidth)
+            fa.lineStyle = vm.lineStyle
             fa.addPoint(pt); vm.pushUndo(); vm.annotations.append(fa)
         case .text:
             beginTextInput(at: pt, vm: vm)
@@ -729,22 +768,27 @@ final class OverlayView: NSView {
             vm.addAnnotation(step)
             inProgressAnnotation = step   // reuse inProgressAnnotation to track during drag
         case .rect:
-            inProgressAnnotation = RectAnnotation(rect: .init(origin: pt, size: .zero),
-                                                  color: vm.strokeColor, lineWidth: vm.lineWidth)
+            let r = RectAnnotation(rect: .init(origin: pt, size: .zero),
+                                   color: vm.strokeColor, lineWidth: vm.lineWidth)
+            r.lineStyle = vm.lineStyle; inProgressAnnotation = r
         case .ellipse:
-            inProgressAnnotation = EllipseAnnotation(rect: .init(origin: pt, size: .zero),
-                                                     color: vm.strokeColor, lineWidth: vm.lineWidth)
+            let e = EllipseAnnotation(rect: .init(origin: pt, size: .zero),
+                                      color: vm.strokeColor, lineWidth: vm.lineWidth)
+            e.lineStyle = vm.lineStyle; inProgressAnnotation = e
         case .line:
-            inProgressAnnotation = LineAnnotation(start: pt, end: pt,
-                                                  color: vm.strokeColor, lineWidth: vm.lineWidth)
+            let l = LineAnnotation(start: pt, end: pt,
+                                   color: vm.strokeColor, lineWidth: vm.lineWidth)
+            l.lineStyle = vm.lineStyle; inProgressAnnotation = l
         case .arrow:
-            inProgressAnnotation = ArrowAnnotation(start: pt, end: pt,
-                                                   color: vm.strokeColor, lineWidth: vm.lineWidth)
+            let a = ArrowAnnotation(start: pt, end: pt,
+                                    color: vm.strokeColor, lineWidth: vm.lineWidth)
+            a.lineStyle = vm.lineStyle; inProgressAnnotation = a
         case .highlight:
             inProgressAnnotation = HighlightAnnotation(rect: .init(origin: pt, size: .zero),
-                                                       color: vm.strokeColor, opacity: vm.highlightOpacity)
+                                                       color: vm.highlightColor, opacity: vm.highlightOpacity)
         case .pen:
             let pen = PenAnnotation(color: vm.strokeColor, lineWidth: vm.lineWidth)
+            pen.lineStyle = vm.lineStyle
             pen.addPoint(pt); vm.pushUndo(); vm.annotations.append(pen)
             inProgressAnnotation = nil
         case .ruler:
@@ -830,25 +874,29 @@ final class OverlayView: NSView {
         case .rect:
             if let s = dragStart {
                 let r = event.modifierFlags.contains(.shift) ? makeSquare(s, cur) : makeRect(s, cur)
-                inProgressAnnotation = RectAnnotation(rect: r, color: vm.strokeColor, lineWidth: vm.lineWidth)
+                let ann = RectAnnotation(rect: r, color: vm.strokeColor, lineWidth: vm.lineWidth)
+                ann.lineStyle = vm.lineStyle; inProgressAnnotation = ann
             }
         case .ellipse:
             if let s = dragStart {
                 let r = event.modifierFlags.contains(.shift) ? makeSquare(s, cur) : makeRect(s, cur)
-                inProgressAnnotation = EllipseAnnotation(rect: r, color: vm.strokeColor, lineWidth: vm.lineWidth)
+                let ann = EllipseAnnotation(rect: r, color: vm.strokeColor, lineWidth: vm.lineWidth)
+                ann.lineStyle = vm.lineStyle; inProgressAnnotation = ann
             }
         case .line:
             if let s = dragStart {
                 let end = event.modifierFlags.contains(.shift) ? angleSnapped(from: s, to: cur) : cur
-                inProgressAnnotation = LineAnnotation(start: s, end: end, color: vm.strokeColor, lineWidth: vm.lineWidth)
+                let ann = LineAnnotation(start: s, end: end, color: vm.strokeColor, lineWidth: vm.lineWidth)
+                ann.lineStyle = vm.lineStyle; inProgressAnnotation = ann
             }
         case .arrow:
             if let s = dragStart {
                 let end = event.modifierFlags.contains(.shift) ? angleSnapped(from: s, to: cur) : cur
-                inProgressAnnotation = ArrowAnnotation(start: s, end: end, color: vm.strokeColor, lineWidth: vm.lineWidth)
+                let ann = ArrowAnnotation(start: s, end: end, color: vm.strokeColor, lineWidth: vm.lineWidth)
+                ann.lineStyle = vm.lineStyle; inProgressAnnotation = ann
             }
         case .highlight:
-            if let s = dragStart { inProgressAnnotation = HighlightAnnotation(rect: makeRect(s, cur), color: vm.strokeColor, opacity: vm.highlightOpacity) }
+            if let s = dragStart { inProgressAnnotation = HighlightAnnotation(rect: makeRect(s, cur), color: vm.highlightColor, opacity: vm.highlightOpacity) }
         case .ruler:
             if let s = dragStart {
                 let end = event.modifierFlags.contains(.shift) ? angleSnapped(from: s, to: cur) : cur
@@ -899,12 +947,17 @@ final class OverlayView: NSView {
             }
         case .region:
             if let live = liveSelectionRect, live.width > 5, live.height > 5 {
+                // Drag to select → immediately capture (ShareX behaviour: no Done button needed).
                 vm.selectionRect = live
-            } else if let win = hoveredWindowRect {
+                clickedWindowRect = nil; liveSelectionRect = nil
+                requestFinish(); return
+            } else if let win = clickedWindowRect ?? hoveredWindowRect {
+                // Single click on a hovered window → immediately capture.
                 vm.selectionRect = toViewRect(win)
-                if vm.windowPickerMode { requestFinish(); return }
+                clickedWindowRect = nil; liveSelectionRect = nil
+                requestFinish(); return
             }
-            liveSelectionRect = nil
+            clickedWindowRect = nil; liveSelectionRect = nil
         case .select:
             moveOrigin = nil; activeHandle = nil
         case .pen, .freehandArrow:
@@ -912,11 +965,12 @@ final class OverlayView: NSView {
         case .ruler, .rect, .ellipse, .line, .arrow, .highlight, .blur, .pixelate, .blackout, .spotlight, .magnify:
             if let ann = inProgressAnnotation {
                 vm.addAnnotation(ann)
-                // Auto-select the just-placed annotation so it can be immediately resized
-                selectedAnnotation = ann
-                vm.activeTool = .select
+                // Keep the current tool active (sticky/toggle mode) so the user can
+                // draw multiple annotations of the same type without re-clicking the icon.
+                // Switch to .select manually to resize/move the placed annotation.
             }
             inProgressAnnotation = nil
+            selectedAnnotation = nil
         case .speechBalloon:
             if let ann = inProgressAnnotation as? SpeechBalloonAnnotation,
                ann.rect.width > 20, ann.rect.height > 20 {
@@ -949,7 +1003,14 @@ final class OverlayView: NSView {
             else { delegate?.overlayViewDidCancel(self) }
             return
         }
-        if event.keyCode == 36 || event.keyCode == 76 { requestFinish(); return }  // Return
+        if event.keyCode == 36 || event.keyCode == 76 { requestFinish(); return }  // Return/Enter
+        // ⌘Z — undo (don't intercept while a text field is active; let it handle its own undo)
+        if event.keyCode == 6 && event.modifierFlags.contains(.command) && editingTextField == nil,
+           let vm = viewModel {
+            vm.undo()
+            selectedAnnotation = nil; selectedAnnotations.removeAll()
+            needsDisplay = true; return
+        }
         if (event.keyCode == 51 || event.keyCode == 117), let vm = viewModel {
             vm.pushUndo()
             if !selectedAnnotations.isEmpty {

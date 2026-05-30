@@ -104,8 +104,14 @@ struct OverlayToolbarView: View {
         HStack(spacing: 6) {
             if ![.region, .freehand, .select, .blur, .pixelate, .blackout, .spotlight,
                  .crop, .eraser, .cursor, .image, .emoji].contains(vm.activeTool) {
-                ColorWellRepresentable(color: $vm.strokeColor)
-                    .frame(width: 28, height: 22)
+                // Highlight keeps its own color (defaults to yellow) independent of strokeColor.
+                if vm.activeTool == .highlight {
+                    ColorWellRepresentable(color: $vm.highlightColor)
+                        .frame(width: 28, height: 22)
+                } else {
+                    ColorWellRepresentable(color: $vm.strokeColor)
+                        .frame(width: 28, height: 22)
+                }
             }
             if vm.activeTool == .highlight {
                 HStack(spacing: 4) {
@@ -119,6 +125,8 @@ struct OverlayToolbarView: View {
                     Text("\(Int(vm.lineWidth))px")
                         .font(.caption).monospacedDigit().frame(width: 32)
                 }.frame(width: 88)
+
+                LineStylePicker(selection: $vm.lineStyle)
             }
             if [.text, .textOutline, .textBackground].contains(vm.activeTool) {
                 Stepper(value: $vm.fontSize, in: 10...72, step: 2) {
@@ -220,6 +228,41 @@ private struct UndoButton: View {
         .keyboardShortcut("z", modifiers: .command)
         .padding(.trailing, 4)
         .onHover { hovered = $0 }
+    }
+}
+
+// MARK: - LineStylePicker
+
+/// A compact 3-button control to choose between solid / dashed / dotted strokes.
+private struct LineStylePicker: View {
+    @Binding var selection: LineStyle
+
+    private let items: [(LineStyle, String, String)] = [
+        (.solid,  "—",   "Solid"),
+        (.dashed, "╌",   "Dashed"),
+        (.dotted, "···", "Dotted"),
+    ]
+
+    var body: some View {
+        HStack(spacing: 1) {
+            ForEach(items, id: \.0.rawValue) { style, label, tip in
+                Button {
+                    selection = style
+                } label: {
+                    Text(label)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .frame(width: 26, height: 22)
+                        .background(selection == style
+                                    ? Color.primary.opacity(0.15)
+                                    : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .help(tip)
+            }
+        }
+        .padding(2)
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 5))
     }
 }
 
