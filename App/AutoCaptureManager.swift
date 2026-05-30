@@ -1,6 +1,6 @@
 import AppKit
 import Defaults
-import CentreeCore
+import ReticleCore
 
 /// Timer-based repeated capture. Fires `captureAction` every `autoCaptureInterval` seconds.
 @MainActor

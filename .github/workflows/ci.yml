@@ -71,10 +71,10 @@ jobs:
       - name: Build archive
         run: |
           xcodebuild archive \
-            -project Centree.xcodeproj \
-            -scheme Centree \
+            -project Reticle.xcodeproj \
+            -scheme Reticle \
             -configuration Release \
-            -archivePath build/Centree.xcarchive \
+            -archivePath build/Reticle.xcarchive \
             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
             | xcpretty
         # Note: real releases require signing. This is a build-only smoke test.

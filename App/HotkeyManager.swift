@@ -1,13 +1,13 @@
 import AppKit
 import HotKey
 import Defaults
-import CentreeCore
+import ReticleCore
 
 /// Registers and manages global hotkeys.
 @MainActor
 final class HotkeyManager {
 
-    // MARK: Actions (injected by CentreeApp)
+    // MARK: Actions (injected by ReticleApp)
 
     var onCaptureRegion: (() -> Void)?
     var onCaptureFullScreen: (() -> Void)?

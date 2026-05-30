@@ -1,8 +1,8 @@
 import CoreGraphics
-import CentreeCore
-import CentreeEffects
-import CentreePipeline
-import CentreeVision
+import ReticleCore
+import ReticleEffects
+import ReticlePipeline
+import ReticleVision
 import Foundation
 
 /// After-capture task that runs Vision OCR, detects PII patterns, and blurs

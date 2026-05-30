@@ -4,11 +4,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>io.centree.app</string>
+    <string>io.reticle.app</string>
     <key>CFBundleName</key>
-    <string>Centree</string>
+    <string>Reticle</string>
     <key>CFBundleDisplayName</key>
-    <string>Centree</string>
+    <string>Reticle</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>
@@ -23,6 +23,6 @@
     <true/>
     <!-- Screen Recording 권한 설명 (시스템 다이얼로그에 표시됨) -->
     <key>NSScreenCaptureUsageDescription</key>
-    <string>Centree needs Screen Recording access to take screenshots.</string>
+    <string>Reticle needs Screen Recording access to take screenshots.</string>
 </dict>
 </plist>

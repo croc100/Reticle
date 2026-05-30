@@ -2,20 +2,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "Centree",
+    name: "Reticle",
     platforms: [
         .macOS(.v13)
     ],
     products: [
-        .library(name: "CentreeCore", targets: ["CentreeCore"]),
-        .library(name: "CentreeCapture", targets: ["CentreeCapture"]),
-        .library(name: "CentreeOverlay", targets: ["CentreeOverlay"]),
-        .library(name: "CentreeEffects", targets: ["CentreeEffects"]),
-        .library(name: "CentreeVision", targets: ["CentreeVision"]),
-        .library(name: "CentreePipeline", targets: ["CentreePipeline"]),
-        .library(name: "CentreeUploaders", targets: ["CentreeUploaders"]),
-        .library(name: "CentreeWorkflow", targets: ["CentreeWorkflow"]),
-        .library(name: "CentreeNaming", targets: ["CentreeNaming"]),
+        .library(name: "ReticleCore", targets: ["ReticleCore"]),
+        .library(name: "ReticleCapture", targets: ["ReticleCapture"]),
+        .library(name: "ReticleOverlay", targets: ["ReticleOverlay"]),
+        .library(name: "ReticleEffects", targets: ["ReticleEffects"]),
+        .library(name: "ReticleVision", targets: ["ReticleVision"]),
+        .library(name: "ReticlePipeline", targets: ["ReticlePipeline"]),
+        .library(name: "ReticleUploaders", targets: ["ReticleUploaders"]),
+        .library(name: "ReticleWorkflow", targets: ["ReticleWorkflow"]),
+        .library(name: "ReticleNaming", targets: ["ReticleNaming"]),
     ],
     dependencies: [
         // Global hotkey registration — simplest API for Carbon-based hotkeys on macOS
@@ -31,132 +31,132 @@ let package = Package(
         // macOS menu bar app target. Opened directly in Xcode via Package.swift —
         // no separate .xcodeproj needed. Entitlements are set in the Xcode scheme.
         .executableTarget(
-            name: "CentreeApp",
+            name: "ReticleApp",
             dependencies: [
-                "CentreeCore",
-                "CentreeCapture",
-                "CentreeOverlay",
-                "CentreeEffects",
-                "CentreePipeline",
-                "CentreeVision",
-                "CentreeWorkflow",
-                "CentreeNaming",
-                "CentreeUploaders",
+                "ReticleCore",
+                "ReticleCapture",
+                "ReticleOverlay",
+                "ReticleEffects",
+                "ReticlePipeline",
+                "ReticleVision",
+                "ReticleWorkflow",
+                "ReticleNaming",
+                "ReticleUploaders",
                 .product(name: "HotKey", package: "HotKey"),
                 .product(name: "Defaults", package: "Defaults"),
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "App",
-            exclude: ["Centree.entitlements", "Info.plist"]
+            exclude: ["Reticle.entitlements", "Info.plist"]
         ),
 
         // MARK: - Library Targets
 
         // Shared models, protocols, and constants consumed by all other modules.
         .target(
-            name: "CentreeCore",
+            name: "ReticleCore",
             dependencies: [
                 .product(name: "Defaults", package: "Defaults"),
             ],
-            path: "Sources/CentreeCore"
+            path: "Sources/ReticleCore"
         ),
 
         // ScreenCaptureKit wrapper: area / window / full-screen capture → CGImage.
         .target(
-            name: "CentreeCapture",
-            dependencies: ["CentreeCore"],
-            path: "Sources/CentreeCapture"
+            name: "ReticleCapture",
+            dependencies: ["ReticleCore"],
+            path: "Sources/ReticleCapture"
         ),
 
         // Full-screen overlay window: region selector, live mask boxes, drawing canvas.
         // Uses AppKit NSWindow directly for precise hit-testing and transparency control.
         .target(
-            name: "CentreeOverlay",
-            dependencies: ["CentreeCore", "CentreeCapture"],
-            path: "Sources/CentreeOverlay"
+            name: "ReticleOverlay",
+            dependencies: ["ReticleCore", "ReticleCapture"],
+            path: "Sources/ReticleOverlay"
         ),
 
         // CoreImage-based effects: Gaussian blur, pixelate, solid fill, shape compositing.
         .target(
-            name: "CentreeEffects",
-            dependencies: ["CentreeCore"],
-            path: "Sources/CentreeEffects"
+            name: "ReticleEffects",
+            dependencies: ["ReticleCore"],
+            path: "Sources/ReticleEffects"
         ),
 
         // Vision framework PII detector: text OCR + regex matching for emails,
         // phone numbers, API keys, JWTs, AWS keys, etc.
         .target(
-            name: "CentreeVision",
-            dependencies: ["CentreeCore"],
-            path: "Sources/CentreeVision"
+            name: "ReticleVision",
+            dependencies: ["ReticleCore"],
+            path: "Sources/ReticleVision"
         ),
 
         // ShareX-style task pipeline: Capture → AfterCapture → Output → AfterOutput.
-        // Depends on CentreeNaming so built-in output tasks can resolve filename tokens.
+        // Depends on ReticleNaming so built-in output tasks can resolve filename tokens.
         .target(
-            name: "CentreePipeline",
+            name: "ReticlePipeline",
             dependencies: [
-                "CentreeCore",
-                "CentreeCapture",
-                "CentreeEffects",
-                "CentreeNaming",
+                "ReticleCore",
+                "ReticleCapture",
+                "ReticleEffects",
+                "ReticleNaming",
             ],
-            path: "Sources/CentreePipeline"
+            path: "Sources/ReticlePipeline"
         ),
 
         // Upload adapters: Imgur, S3, custom SFTP — all behind a common Uploader protocol.
         .target(
-            name: "CentreeUploaders",
-            dependencies: ["CentreeCore"],
-            path: "Sources/CentreeUploaders"
+            name: "ReticleUploaders",
+            dependencies: ["ReticleCore"],
+            path: "Sources/ReticleUploaders"
         ),
 
         // Workflow profile system: one hotkey = one workflow config.
         .target(
-            name: "CentreeWorkflow",
+            name: "ReticleWorkflow",
             dependencies: [
-                "CentreeCore",
-                "CentreePipeline",
+                "ReticleCore",
+                "ReticlePipeline",
                 .product(name: "HotKey", package: "HotKey"),
             ],
-            path: "Sources/CentreeWorkflow"
+            path: "Sources/ReticleWorkflow"
         ),
 
         // Filename token parser: %year%-%month%-%day%_%app%_%counter%.png
         .target(
-            name: "CentreeNaming",
-            dependencies: ["CentreeCore"],
-            path: "Sources/CentreeNaming"
+            name: "ReticleNaming",
+            dependencies: ["ReticleCore"],
+            path: "Sources/ReticleNaming"
         ),
 
         // MARK: - Test Targets
 
         .testTarget(
-            name: "CentreeCoreTests",
-            dependencies: ["CentreeCore"],
-            path: "Tests/CentreeCoreTests"
+            name: "ReticleCoreTests",
+            dependencies: ["ReticleCore"],
+            path: "Tests/ReticleCoreTests"
         ),
         .testTarget(
-            name: "CentreePipelineTests",
-            dependencies: ["CentreePipeline"],
-            path: "Tests/CentreePipelineTests"
+            name: "ReticlePipelineTests",
+            dependencies: ["ReticlePipeline"],
+            path: "Tests/ReticlePipelineTests"
         ),
         .testTarget(
-            name: "CentreeNamingTests",
-            dependencies: ["CentreeNaming"],
-            path: "Tests/CentreeNamingTests"
+            name: "ReticleNamingTests",
+            dependencies: ["ReticleNaming"],
+            path: "Tests/ReticleNamingTests"
         ),
         .testTarget(
-            name: "CentreeEffectsTests",
-            dependencies: ["CentreeEffects"],
-            path: "Tests/CentreeEffectsTests"
+            name: "ReticleEffectsTests",
+            dependencies: ["ReticleEffects"],
+            path: "Tests/ReticleEffectsTests"
         ),
-        // CentreeCapture unit tests — SCK-dependent tests must run in Xcode (need entitlement).
+        // ReticleCapture unit tests — SCK-dependent tests must run in Xcode (need entitlement).
         // This target only tests types that don't invoke SCStream.
         .testTarget(
-            name: "CentreeCaptureTests",
-            dependencies: ["CentreeCapture"],
-            path: "Tests/CentreeCaptureTests"
+            name: "ReticleCaptureTests",
+            dependencies: ["ReticleCapture"],
+            path: "Tests/ReticleCaptureTests"
         ),
     ]
 )

@@ -1,8 +1,8 @@
 import SwiftUI
 import Defaults
 import HotKey
-import CentreeCore
-import CentreeVision
+import ReticleCore
+import ReticleVision
 
 // MARK: - Root
 

@@ -1,4 +1,4 @@
-# Contributing to Centree
+# Contributing to Reticle
 
 Thank you for considering a contribution! This guide covers everything you need to go from zero to an open pull request.
 
@@ -39,19 +39,19 @@ brew install xcpretty   # Nicer xcodebuild output
 ## Project Structure
 
 ```
-Centree/
-├── Centree.xcodeproj/       # Xcode project (app target, entitlements, assets)
+Reticle/
+├── Reticle.xcodeproj/       # Xcode project (app target, entitlements, assets)
 ├── App/                     # App target sources (AppDelegate, SwiftUI App, settings UI)
 ├── Sources/
-│   ├── CentreeCore/         # Shared models & protocols
-│   ├── CentreeCapture/      # ScreenCaptureKit wrapper
-│   ├── CentreeOverlay/      # Full-screen overlay window
-│   ├── CentreeEffects/      # CoreImage mask/blur rendering
-│   ├── CentreeVision/       # Vision PII detector
-│   ├── CentreePipeline/     # Task pipeline engine
-│   ├── CentreeUploaders/    # Upload adapters
-│   ├── CentreeWorkflow/     # Hotkey workflow profiles
-│   └── CentreeNaming/       # Filename token parser
+│   ├── ReticleCore/         # Shared models & protocols
+│   ├── ReticleCapture/      # ScreenCaptureKit wrapper
+│   ├── ReticleOverlay/      # Full-screen overlay window
+│   ├── ReticleEffects/      # CoreImage mask/blur rendering
+│   ├── ReticleVision/       # Vision PII detector
+│   ├── ReticlePipeline/     # Task pipeline engine
+│   ├── ReticleUploaders/    # Upload adapters
+│   ├── ReticleWorkflow/     # Hotkey workflow profiles
+│   └── ReticleNaming/       # Filename token parser
 ├── Tests/                   # XCTest targets (one per library module)
 ├── Package.swift            # Swift Package (library modules + tests)
 └── .github/                 # CI workflows, issue templates
@@ -73,14 +73,14 @@ swift build
 ### Full app (requires Xcode project)
 
 ```bash
-open Centree.xcodeproj
+open Reticle.xcodeproj
 # Then ⌘R in Xcode
 ```
 
 Or from the command line:
 
 ```bash
-xcodebuild -project Centree.xcodeproj -scheme Centree -configuration Debug build | xcpretty
+xcodebuild -project Reticle.xcodeproj -scheme Reticle -configuration Debug build | xcpretty
 ```
 
 ---
@@ -92,10 +92,10 @@ xcodebuild -project Centree.xcodeproj -scheme Centree -configuration Debug build
 swift test --parallel
 
 # Specific target:
-swift test --filter CentreeNamingTests
+swift test --filter ReticleNamingTests
 ```
 
-Tests that touch ScreenCaptureKit (`CentreeCaptureTests`) require Screen Recording permission
+Tests that touch ScreenCaptureKit (`ReticleCaptureTests`) require Screen Recording permission
 and must be run from Xcode, not `swift test`.
 
 ---
@@ -120,9 +120,9 @@ These steps assume you have cloned the repo and want to set up the Xcode project
 1. Open Xcode → **File > New > Project…**
 2. Choose **macOS → App**, click **Next**
 3. Fill in:
-   - **Product Name**: `Centree`
-   - **Organization Identifier**: `io.centree` (or your own reverse-DNS)
-   - **Bundle Identifier**: `io.centree.Centree`
+   - **Product Name**: `Reticle`
+   - **Organization Identifier**: `io.reticle` (or your own reverse-DNS)
+   - **Bundle Identifier**: `io.reticle.Reticle`
    - **Interface**: SwiftUI
    - **Language**: Swift
    - Uncheck **Include Tests** (tests live in `Package.swift`)
@@ -131,7 +131,7 @@ These steps assume you have cloned the repo and want to set up the Xcode project
 
 ### Step 2 — Delete the generated app group folder
 
-Xcode creates a `Centree/` subfolder with a generated `ContentView.swift` etc.  
+Xcode creates a `Reticle/` subfolder with a generated `ContentView.swift` etc.  
 Delete it — the real app sources live in `App/`.
 
 ### Step 3 — Add the local Swift package
@@ -139,12 +139,12 @@ Delete it — the real app sources live in `App/`.
 1. In Xcode, **File > Add Package Dependencies…**
 2. Click **Add Local…** and select the repo root (the folder containing `Package.swift`)
 3. Xcode will resolve all modules. Add the ones the app target needs:
-   `CentreeCore`, `CentreeCapture`, `CentreeOverlay`, `CentreeEffects`,
-   `CentreePipeline`, `CentreeWorkflow`, `CentreeNaming`
+   `ReticleCore`, `ReticleCapture`, `ReticleOverlay`, `ReticleEffects`,
+   `ReticlePipeline`, `ReticleWorkflow`, `ReticleNaming`
 
 ### Step 4 — Add source files
 
-Drag the contents of `App/` into the Centree Xcode target (check **"Add to target: Centree"**).
+Drag the contents of `App/` into the Reticle Xcode target (check **"Add to target: Reticle"**).
 
 ### Step 5 — Set the deployment target
 
@@ -152,7 +152,7 @@ Target → **General → Minimum Deployments**: `macOS 13.0`
 
 ### Step 6 — Add entitlements
 
-Create `App/Centree.entitlements`:
+Create `App/Reticle.entitlements`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -177,7 +177,7 @@ In Target → **Signing & Capabilities**, set **Code Signing Entitlements** to t
 Add the **App Sandbox** capability and then **remove** it (or leave it off from the start).  
 Global hotkeys via HotKey require `com.apple.security.temporary-exception.apple-events` or no sandbox.
 
-> **Note**: Because Centree is distributed outside the Mac App Store, we don't need sandbox.
+> **Note**: Because Reticle is distributed outside the Mac App Store, we don't need sandbox.
 
 ---
 

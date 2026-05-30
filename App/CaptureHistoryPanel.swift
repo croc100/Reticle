@@ -1,5 +1,5 @@
 import AppKit
-import CentreeCore
+import ReticleCore
 import SwiftUI
 
 // MARK: - CaptureHistoryPanel

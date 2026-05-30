@@ -1,8 +1,8 @@
 import AppKit
 import CoreGraphics
-import CentreeCore
-import CentreeNaming
-import CentreePipeline
+import ReticleCore
+import ReticleNaming
+import ReticlePipeline
 import Defaults
 import Foundation
 

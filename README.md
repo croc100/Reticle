@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="Resources/logo.svg" width="128" alt="Centree" />
+  <img src="Resources/logo.svg" width="128" alt="Reticle" />
 </p>
 
-<h1 align="center">Centree</h1>
+<h1 align="center">Reticle</h1>
 
 <p align="center">
   A free, open-source screenshot tool for macOS — built for people who take screenshots seriously.
@@ -16,8 +16,19 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/demo.svg" alt="Centree in action — annotation toolbar with freeze overlay" width="100%" />
+  <img src="docs/assets/demo.svg" alt="Reticle in action — annotation toolbar with freeze overlay" width="100%" />
 </p>
+
+---
+
+## What is Reticle?
+
+Reticle is a **macOS-native screenshot tool** that brings the full power of [ShareX](https://getsharex.com/) — the gold standard on Windows — to macOS.
+
+Most macOS screenshot tools are either too simple (built-in Screenshot.app) or too expensive (CleanShot X at $29). Reticle is **completely free and open source**, with a ShareX-style annotation toolbar, workflow automation, and cloud upload built in from day one.
+
+> **Pricing:** Free for everyone. Yes, everyone. Well — *almost* everyone.  
+> **기엽이는 유료입니다.** 기엽아, 이거 쓰려면 커피 한 잔 사와. ☕
 
 ---
 
@@ -29,36 +40,42 @@
 |---|:---:|
 | Region capture (freeze + annotate) | ✅ |
 | Full-screen capture | ✅ |
-| Window capture (picker) | ✅ |
+| Per-monitor capture | ✅ |
+| Window capture (click-to-pick) | ✅ |
 | Scrolling screenshot | ✅ |
 | Last region repeat | ✅ |
 | Saved regions | ✅ |
-| Auto capture (interval) | ✅ |
+| Auto capture (interval timer) | ✅ |
 | Capture delay (countdown) | ✅ |
+| ShareX-style instant capture (drag or click) | ✅ |
 
 ### Annotation Tools
 
-21 tools, ShareX-style toolbar that slides in from the top of the frozen screen.
+21 tools, ShareX-style toolbar that slides in from the top of the frozen screen.  
+Each tool is **sticky** — stays active until you switch to another.
 
-| Tool | Status |
-|---|:---:|
-| Rectangle / Ellipse / Line / Arrow | ✅ |
-| Freehand pen | ✅ |
-| Text | ✅ |
-| Step numbers | ✅ |
-| Speech balloon | ✅ |
-| Highlight | ✅ |
-| Blur (Gaussian, live preview) | ✅ |
-| Pixelate (live preview) | ✅ |
-| Blackout | ✅ |
-| Spotlight | ✅ |
-| Magnify / Loupe | ✅ |
-| Emoji / Sticker | ✅ |
-| Mouse cursor stamp | ✅ |
-| Image insert | ✅ |
-| Crop | ✅ |
-| Eraser | ✅ |
-| Select / Move | ✅ |
+| Tool | Notes |
+|---|---|
+| Rectangle / Ellipse | Solid / dashed / dotted stroke |
+| Line / Arrow | Solid / dashed / dotted, angle-snap with Shift |
+| Freehand pen | Smooth cardinal spline |
+| Freehand arrow | |
+| Text | Outline, background variants |
+| Step numbers | Auto-increments, drag to add leader line |
+| Speech balloon | Click-through text input |
+| Highlight | Defaults to fluorescent yellow, adjustable opacity |
+| Blur (Gaussian) | Live preview, expanded-crop for edge accuracy |
+| Pixelate | Live preview |
+| Blackout | |
+| Spotlight | Dark overlay with circular reveal |
+| Magnify / Loupe | Circular magnifier with configurable scale |
+| Emoji / Sticker | |
+| Mouse cursor stamp | |
+| Image insert | |
+| Ruler | With scale readout |
+| Crop | Non-destructive selection crop |
+| Eraser | Smart: trims pen strokes point-by-point |
+| Select / Move | Rotate, resize, multi-select with Shift |
 
 ### After Capture
 
@@ -73,6 +90,17 @@
 | Reveal in Finder | ✅ |
 | Copy file path | ✅ |
 
+### Uploads
+
+| Destination | Status |
+|---|:---:|
+| Imgur | ✅ |
+| Amazon S3 / Backblaze B2 / Cloudflare R2 | ✅ |
+| FTP / SFTP | ✅ |
+| Custom HTTP uploader (JSON-defined) | ✅ |
+| Google Drive / Dropbox | 🔜 |
+| URL shortener | 🔜 |
+
 ### Utilities
 
 | Tool | Status |
@@ -80,51 +108,61 @@
 | Screen color picker (loupe + HEX copy) | ✅ |
 | Clipboard history (⌘⇧V, last 30 items) | ✅ |
 | OCR result panel | ✅ |
-| Customizable hotkeys | ✅ |
+| Workflow profiles (hotkey → capture mode → upload) | ✅ |
+| Customizable global hotkeys | ✅ |
+
+---
+
+## Why Reticle?
+
+### vs. the competition
+
+| | Reticle | CleanShot X | Shottr | Snagit | Flameshot |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Price** | **Free** | $29 one-time | Free | $62/year | Free |
+| **Open source** | ✅ | ❌ | ❌ | ❌ | ✅ |
+| ShareX-style annotation | ✅ | ❌ | ❌ | partial | ❌ |
+| Sticky tool mode | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Live blur / pixelate preview | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Line style (solid/dashed/dotted) | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Scrolling screenshot | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Window picker (click-to-capture) | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Color picker | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Clipboard history | ✅ | ✅ | ❌ | ❌ | ❌ |
+| OCR | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Pin to screen | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Cloud uploads | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Workflow automation | ✅ | partial | ❌ | ✅ | ❌ |
+| Pixel-perfect capture | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Display P3 color space preserved | ✅ | ✅ | ❓ | ❓ | ❌ |
+| **Static Mask (auto-redact regions)** | 🔜 | ❌ | ❌ | ❌ | ❌ |
+| **Vision PII auto-detection** | 🔜 | ❌ | ❌ | ❌ | ❌ |
+
+### Reticle vs. ShareX
+
+ShareX is the undisputed best screenshot tool — on Windows. Reticle aims for **feature parity on macOS**, built natively with SwiftUI + AppKit + ScreenCaptureKit rather than a port.
+
+| | Reticle | ShareX (Windows) |
+|---|:---:|:---:|
+| Native macOS (SwiftUI / AppKit) | ✅ | — |
+| Freeze-screen annotation overlay | ✅ | ✅ |
+| Instant drag-or-click capture | ✅ | ✅ |
+| Annotation toolbar (21 tools) | ✅ | ✅ |
+| Workflow / after-capture pipeline | ✅ | ✅ |
+| Cloud upload destinations | ✅ | ✅ |
+| Screen recording | 🔜 | ✅ |
 
 ---
 
 ## Coming Soon
 
-### Cloud Uploads
-- Imgur
-- Amazon S3 / Backblaze B2 / Cloudflare R2
-- Google Drive / Dropbox
-- FTP / SFTP
-- Custom HTTP uploader (JSON-defined)
-- URL shortener (bit.ly / is.gd)
-
-### More Tools
-- QR code generate / scan
-- Screen recording — GIF & MP4
-- Watch folder (auto-process on save)
-
-### Centree-only
+- **Screen recording** — GIF & MP4
+- **QR code** generate / scan
 - **Static Mask** — register regions once, auto-redact on every capture
 - **Vision PII detection** — auto-detect emails, phone numbers, API keys, JWTs
-
-### Distribution
-- Signed DMG + Apple notarization
-- Homebrew Cask (`brew install --cask centree`)
-- Sparkle auto-update
-
----
-
-## Why Centree?
-
-| | Centree | CleanShot X | Shottr | Flameshot |
-|---|:---:|:---:|:---:|:---:|
-| ShareX-style annotation toolbar | ✅ | ❌ | ❌ | ❌ |
-| Blur / pixelate with live preview | ✅ | ✅ | ✅ | ✅ |
-| Scrolling screenshot | ✅ | ✅ | ❌ | ❌ |
-| Color picker | ✅ | ✅ | ✅ | ❌ |
-| Clipboard history | ✅ | ✅ | ❌ | ❌ |
-| OCR | ✅ | ✅ | ✅ | ❌ |
-| Pin to screen | ✅ | ✅ | ❌ | ❌ |
-| **Static Mask (auto-redact)** | 🔜 | ❌ | ❌ | ❌ |
-| **Vision PII auto-detection** | 🔜 | ❌ | ❌ | ❌ |
-| Open source | ✅ | ❌ | ❌ | ✅ |
-| Free | ✅ | ❌ ($29) | ✅ | ✅ |
+- **Watch folder** — auto-process on save
+- **Homebrew Cask** — `brew install --cask reticle`
+- Signed DMG + Sparkle auto-update
 
 ---
 
@@ -138,29 +176,43 @@
 > Signed DMG and Homebrew coming with v1.0. Build from source until then.
 
 ```bash
-git clone https://github.com/croc100/centree.git
-cd centree
-# Open Package.swift in Xcode → select CentreeApp scheme → Run
+git clone https://github.com/croc100/reticle.git
+cd reticle
+swift build -c release
+# Or open Package.swift in Xcode → select ReticleApp scheme → Run
 ```
 
-Grant **Screen Recording** permission on first launch.
+Grant **Screen Recording** permission on first launch.  
 Grant **Accessibility** permission for scroll capture and hotkey recording.
+
+---
+
+## Keyboard Shortcuts (in the annotation overlay)
+
+| Key | Action |
+|---|---|
+| Drag or click window | Instant capture (ShareX-style) |
+| `⌘Z` | Undo last annotation |
+| `Delete` / `Backspace` | Delete selected annotation |
+| `Return` / `Enter` | Finalize and capture |
+| `Escape` | Cancel |
+| `Shift` + drag | Constrain to square / 45° angle |
 
 ---
 
 ## Architecture
 
 ```
-CentreeApp          — Menu bar app, hotkey wiring, capture coordinator
-├── CentreeCapture  — ScreenCaptureKit wrapper (region / window / full-screen / scroll)
-├── CentreeOverlay  — Full-screen freeze overlay + annotation toolbar (SwiftUI + AppKit)
-├── CentreeEffects  — CoreImage blur / pixelate / mask rendering
-├── CentreePipeline — Capture → AfterCapture → Output → AfterOutput task chain
-├── CentreeNaming   — Filename token parser (%year%, %counter%, %app%, …)
-├── CentreeVision   — Vision framework OCR + PII detector
-├── CentreeWorkflow — Hotkey → workflow profile binding
-├── CentreeUploaders— Upload adapters (Imgur, S3, custom HTTP, …)
-└── CentreeCore     — Shared models, protocols, Defaults keys
+ReticleApp          — Menu bar app, hotkey wiring, capture coordinator
+├── ReticleCapture  — ScreenCaptureKit wrapper (region / window / full-screen / scroll)
+├── ReticleOverlay  — Full-screen freeze overlay + annotation toolbar (SwiftUI + AppKit)
+├── ReticleEffects  — CoreImage blur / pixelate / mask rendering
+├── ReticlePipeline — Capture → AfterCapture → Output → AfterOutput task chain
+├── ReticleNaming   — Filename token parser (%year%, %counter%, %app%, …)
+├── ReticleVision   — Vision framework OCR + PII detector
+├── ReticleWorkflow — Hotkey → workflow profile binding
+├── ReticleUploaders— Upload adapters (Imgur, S3, custom HTTP, …)
+└── ReticleCore     — Shared models, protocols, Defaults keys
 ```
 
 ---
@@ -171,8 +223,10 @@ CentreeApp          — Menu bar app, hotkey wiring, capture coordinator
 
 Free for open-source use. Commercial use without AGPL compliance requires a separate license.
 
+> 기엽이는 무조건 유료. 협상 없음.
+
 ## Contributing
 
 PRs welcome. Open an issue first for large changes.
 
-© Centree Contributors
+© Reticle Contributors

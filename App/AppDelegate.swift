@@ -1,5 +1,5 @@
 import AppKit
-import CentreeCapture
+import ReticleCapture
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -24,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let alert = NSAlert()
         alert.messageText = "Screen Recording Permission Required"
         alert.informativeText = """
-            Centree needs Screen Recording access to take screenshots.
+            Reticle needs Screen Recording access to take screenshots.
 
             Grant access in System Settings → Privacy & Security → Screen Recording, \
             then relaunch the app.

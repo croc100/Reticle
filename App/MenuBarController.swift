@@ -1,7 +1,7 @@
 import SwiftUI
 import Defaults
 import HotKey
-import CentreeCore
+import ReticleCore
 
 /// SwiftUI content for the MenuBarExtra dropdown.
 struct MenuBarMenuView: View {
@@ -90,7 +90,7 @@ struct MenuBarMenuView: View {
 
         Divider()
 
-        Button("Quit Centree") { NSApplication.shared.terminate(nil) }
+        Button("Quit Reticle") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
     }
 

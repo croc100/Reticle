@@ -1,6 +1,6 @@
 import AppKit
-import CentreeCore
-import CentreePipeline
+import ReticleCore
+import ReticlePipeline
 import Foundation
 
 /// After-capture task that opens the system print dialog for the captured image.

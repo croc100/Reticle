@@ -1,12 +1,12 @@
 import AppKit
 import CoreGraphics
 import Defaults
-import CentreeCapture
-import CentreeCore
-import CentreeOverlay
-import CentreePipeline
-import CentreeUploaders
-import CentreeVision
+import ReticleCapture
+import ReticleCore
+import ReticleOverlay
+import ReticlePipeline
+import ReticleUploaders
+import ReticleVision
 import Foundation
 
 /// Top-level coordinator — owns the full ShareX-style capture flow.
@@ -338,7 +338,7 @@ final class CaptureCoordinator: ObservableObject {
             if optSet.contains(.uploadToImgur) {
                 let clientID = Defaults[.imgurClientID]
                 guard !clientID.isEmpty else {
-                    showError(NSError(domain: "Centree", code: 0,
+                    showError(NSError(domain: "Reticle", code: 0,
                                      userInfo: [NSLocalizedDescriptionKey: "Imgur Client ID not configured. Add it in Settings → Pipeline."]))
                     return
                 }
@@ -355,7 +355,7 @@ final class CaptureCoordinator: ObservableObject {
                 let keyID  = Defaults[.s3AccessKeyID]
                 let secret = Defaults[.s3SecretAccessKey]
                 guard !bucket.isEmpty && !keyID.isEmpty && !secret.isEmpty else {
-                    showError(NSError(domain: "Centree", code: 0,
+                    showError(NSError(domain: "Reticle", code: 0,
                                      userInfo: [NSLocalizedDescriptionKey:
                                         "S3 not configured. Fill in bucket, access key, and secret in Settings → Pipeline."]))
                     return
@@ -380,7 +380,7 @@ final class CaptureCoordinator: ObservableObject {
             if optSet.contains(.uploadCustomHTTP) {
                 let endpointURL = Defaults[.customHTTPURL]
                 guard !endpointURL.isEmpty else {
-                    showError(NSError(domain: "Centree", code: 0,
+                    showError(NSError(domain: "Reticle", code: 0,
                                      userInfo: [NSLocalizedDescriptionKey:
                                         "Custom HTTP URL not configured. Add it in Settings → Pipeline."]))
                     return
@@ -409,7 +409,7 @@ final class CaptureCoordinator: ObservableObject {
             if optSet.contains(.uploadToSFTP) {
                 let host = Defaults[.sftpHost]
                 guard !host.isEmpty else {
-                    showError(NSError(domain: "Centree", code: 0,
+                    showError(NSError(domain: "Reticle", code: 0,
                                      userInfo: [NSLocalizedDescriptionKey:
                                         "SFTP host not configured. Add it in Settings → Pipeline."]))
                     return
