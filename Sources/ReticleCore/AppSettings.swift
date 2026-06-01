@@ -169,6 +169,19 @@ public extension Defaults.Keys {
     /// Blur radius of the drop shadow in pixels.
     static let borderShadowBlur = Key<Double>("borderShadowBlur", default: 20.0)
 
+    // MARK: Screen Recording
+
+    /// Output format raw value: "mp4" or "gif".
+    static let recordingFormatRaw   = Key<String>("recordingFormatRaw",   default: "mp4")
+    /// Frames per second for screen recording (10–60).
+    static let recordingFPS         = Key<Int>("recordingFPS",             default: 30)
+    /// Copy the output file path to the clipboard after recording finishes.
+    static let recordingCopyPathToClipboard = Key<Bool>("recordingCopyPathToClipboard", default: true)
+    /// Show a desktop notification when the recording file is ready.
+    static let recordingShowNotification    = Key<Bool>("recordingShowNotification",    default: true)
+    /// Reveal the output file in Finder after recording finishes.
+    static let recordingRevealInFinder      = Key<Bool>("recordingRevealInFinder",      default: false)
+
     // MARK: Workflow Profiles
 
     /// User-defined capture workflow profiles.

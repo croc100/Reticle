@@ -159,13 +159,11 @@ ShareX is the undisputed best screenshot tool — on Windows. Reticle aims for *
 
 ## Coming Soon
 
-- **Screen recording** — GIF & MP4
 - **QR code** generate / scan
 - **Static Mask** — register regions once, auto-redact on every capture
 - **Vision PII detection** — auto-detect emails, phone numbers, API keys, JWTs
 - **Watch folder** — auto-process on save
-- **Homebrew Cask** — `brew install --cask reticle`
-- Signed DMG + Sparkle auto-update
+- Notarized DMG + Sparkle auto-update
 
 ---
 
@@ -176,11 +174,27 @@ ShareX is the undisputed best screenshot tool — on Windows. Reticle aims for *
 
 ## Installation
 
-> Signed DMG and Homebrew coming with v1.0. Build from source until then.
+### Homebrew (recommended)
+
+```bash
+brew tap croc100/reticle
+brew install --cask reticle
+```
+
+> **First launch:** Reticle is not yet notarized. Right-click → **Open**, or run:
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/Reticle.app
+> ```
+
+### Download DMG
+
+Grab the latest `Reticle-x.x.x.dmg` from [Releases](https://github.com/croc100/Reticle/releases).
+
+### Build from source
 
 ```bash
 git clone https://github.com/croc100/Reticle.git
-cd reticle
+cd Reticle
 swift build -c release
 # Or open Package.swift in Xcode → select ReticleApp scheme → Run
 ```

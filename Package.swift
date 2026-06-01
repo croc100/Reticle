@@ -7,15 +7,16 @@ let package = Package(
         .macOS(.v13)
     ],
     products: [
-        .library(name: "ReticleCore", targets: ["ReticleCore"]),
-        .library(name: "ReticleCapture", targets: ["ReticleCapture"]),
-        .library(name: "ReticleOverlay", targets: ["ReticleOverlay"]),
-        .library(name: "ReticleEffects", targets: ["ReticleEffects"]),
-        .library(name: "ReticleVision", targets: ["ReticleVision"]),
+        .library(name: "ReticleCore",     targets: ["ReticleCore"]),
+        .library(name: "ReticleCapture",  targets: ["ReticleCapture"]),
+        .library(name: "ReticleOverlay",  targets: ["ReticleOverlay"]),
+        .library(name: "ReticleEffects",  targets: ["ReticleEffects"]),
+        .library(name: "ReticleVision",   targets: ["ReticleVision"]),
         .library(name: "ReticlePipeline", targets: ["ReticlePipeline"]),
-        .library(name: "ReticleUploaders", targets: ["ReticleUploaders"]),
+        .library(name: "ReticleUploaders",targets: ["ReticleUploaders"]),
         .library(name: "ReticleWorkflow", targets: ["ReticleWorkflow"]),
-        .library(name: "ReticleNaming", targets: ["ReticleNaming"]),
+        .library(name: "ReticleNaming",   targets: ["ReticleNaming"]),
+        .library(name: "ReticleRecorder", targets: ["ReticleRecorder"]),
     ],
     dependencies: [
         // Global hotkey registration — simplest API for Carbon-based hotkeys on macOS
@@ -44,6 +45,7 @@ let package = Package(
                 "ReticleUploaders",
                 .product(name: "HotKey", package: "HotKey"),
                 .product(name: "Defaults", package: "Defaults"),
+                "ReticleRecorder",
             ],
             path: "App",
             exclude: ["Reticle.entitlements", "Info.plist"]
@@ -126,6 +128,13 @@ let package = Package(
             name: "ReticleNaming",
             dependencies: ["ReticleCore"],
             path: "Sources/ReticleNaming"
+        ),
+
+        // SCStream-based screen recorder → MP4 (AVAssetWriter/H.264) or GIF (ImageIO).
+        .target(
+            name: "ReticleRecorder",
+            dependencies: ["ReticleCore"],
+            path: "Sources/ReticleRecorder"
         ),
 
         // MARK: - Test Targets

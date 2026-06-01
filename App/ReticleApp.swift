@@ -1,9 +1,11 @@
 import SwiftUI
+import ReticleRecorder
 
 @main
 struct ReticleApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var coordinator = CaptureCoordinator()
+    @StateObject private var coordinator       = CaptureCoordinator()
+    @StateObject private var recorderController = ScreenRecorderController()
 
     /// Holds global hotkey registrations for the app lifetime.
     private let hotkeyManager = HotkeyManager()
@@ -33,6 +35,7 @@ struct ReticleApp: App {
         MenuBarExtra {
             MenuBarMenuView()
                 .environmentObject(coordinator)
+                .environmentObject(recorderController)
         } label: {
             Image(systemName: "camera.viewfinder")
         }

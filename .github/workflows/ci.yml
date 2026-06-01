@@ -54,12 +54,14 @@ jobs:
       - name: Run SwiftLint
         run: swiftlint --reporter github-actions-logging
 
-  # ── Release build (on tags) ───────────────────────────────────────────────
+  # ── Release build + DMG (on tags) ────────────────────────────────────────
   release-build:
-    name: Release Build (Xcode)
+    name: Release Build & DMG
     runs-on: macos-14
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build-and-test, lint]
+    permissions:
+      contents: write   # needed to upload release assets
 
     steps:
       - name: Checkout
@@ -68,15 +70,76 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
 
-      - name: Build archive
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-release-${{ hashFiles('Package.resolved') }}
+          restore-keys: ${{ runner.os }}-spm-
+
+      - name: Build release binary
+        run: swift build -c release --product ReticleApp
+
+      # ── Assemble .app bundle ──────────────────────────────────────────────
+      # swift build produces a bare executable; we wrap it in a minimal .app
+      # bundle so macOS treats it as a proper application.
+      - name: Create Reticle.app bundle
         run: |
-          xcodebuild archive \
-            -project Reticle.xcodeproj \
-            -scheme Reticle \
-            -configuration Release \
-            -archivePath build/Reticle.xcarchive \
-            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
-            | xcpretty
-        # Note: real releases require signing. This is a build-only smoke test.
-        # Notarization is handled separately via Fastlane / manual workflow.
-        continue-on-error: true
+          APP="build/Reticle.app"
+          mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources"
+          cp .build/release/ReticleApp "$APP/Contents/MacOS/Reticle"
+          cp App/Info.plist "$APP/Contents/Info.plist"
+          # Copy icon if present
+          [ -f "Resources/AppIcon.icns" ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/"
+          chmod +x "$APP/Contents/MacOS/Reticle"
+
+      # ── Code-sign (ad-hoc for unsigned build) ────────────────────────────
+      # Ad-hoc signing lets the binary run on the build machine and pass
+      # Gatekeeper on developer machines with spctl disabled.
+      # A proper Developer ID signature is needed for notarization (v1.0).
+      - name: Ad-hoc sign
+        run: codesign --force --deep --sign - build/Reticle.app
+
+      # ── Build DMG ─────────────────────────────────────────────────────────
+      - name: Create DMG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"   # strip leading 'v' from tag
+          DMG_NAME="Reticle-${VERSION}.dmg"
+
+          # Create a temporary folder with the .app + Applications symlink
+          mkdir -p build/dmg_staging
+          cp -R build/Reticle.app build/dmg_staging/
+          ln -sf /Applications build/dmg_staging/Applications
+
+          hdiutil create \
+            -volname "Reticle ${VERSION}" \
+            -srcfolder build/dmg_staging \
+            -ov -format UDZO \
+            -o "build/${DMG_NAME}"
+
+          # Compute SHA-256 for the Homebrew cask formula
+          shasum -a 256 "build/${DMG_NAME}" | awk '{print $1}' > build/Reticle.sha256
+          echo "DMG_NAME=${DMG_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION=${VERSION}"   >> "$GITHUB_ENV"
+
+      # ── Upload to GitHub Release ──────────────────────────────────────────
+      - name: Upload DMG to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/${{ env.DMG_NAME }}
+            build/Reticle.sha256
+
+      # ── Print install instructions ────────────────────────────────────────
+      - name: Print cask update instructions
+        run: |
+          SHA=$(cat build/Reticle.sha256)
+          echo ""
+          echo "======================================================"
+          echo "  Homebrew Cask — update homebrew-reticle/reticle.rb"
+          echo "======================================================"
+          echo "  url    https://github.com/croc100/Reticle/releases/download/${{ github.ref_name }}/${{ env.DMG_NAME }}"
+          echo "  sha256 ${SHA}"
+          echo "  version ${{ env.VERSION }}"
+          echo "======================================================"

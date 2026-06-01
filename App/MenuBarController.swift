@@ -2,10 +2,12 @@ import SwiftUI
 import Defaults
 import HotKey
 import ReticleCore
+import ReticleRecorder
 
 /// SwiftUI content for the MenuBarExtra dropdown.
 struct MenuBarMenuView: View {
     @EnvironmentObject var coordinator: CaptureCoordinator
+    @EnvironmentObject var recorderController: ScreenRecorderController
     @Default(.savedRegions)    var savedRegions
     @Default(.lastCaptureRect) var lastCaptureRect
     @Default(.workflowProfiles) var workflowProfiles
@@ -16,6 +18,7 @@ struct MenuBarMenuView: View {
     @ObservedObject private var autoCapture = AutoCaptureManager.shared
 
     var body: some View {
+        // MARK: Screenshot section
         Button(hotkeyLabel("Capture Region", keyCode: regionCode, mods: regionMods)) {
             coordinator.captureWithOverlay()
         }
@@ -41,6 +44,22 @@ struct MenuBarMenuView: View {
         Button("Repeat Last Region") { coordinator.captureLastRegion() }
             .disabled(lastCaptureRect == nil)
 
+        // MARK: Recording section
+        Divider()
+
+        if recorderController.isRecording {
+            let m = recorderController.elapsedSeconds / 60
+            let s = recorderController.elapsedSeconds % 60
+            Button("⏹ Stop Recording  \(String(format: "%d:%02d", m, s))") {
+                recorderController.stop()
+            }
+        } else {
+            Button("Record Screen") {
+                recorderController.startInteractive()
+            }
+        }
+
+        // MARK: Saved regions / workflows
         if !savedRegions.isEmpty {
             Divider()
             Menu("Saved Regions") {
@@ -96,11 +115,10 @@ struct MenuBarMenuView: View {
 
     // MARK: - Helpers
 
-    /// Builds a menu label like "Capture Region      ⌃⌘4" using live Defaults values.
+    /// Builds a menu label like "Capture Region      ⌘⇧2" using live Defaults values.
     private func hotkeyLabel(_ title: String, keyCode: UInt32, mods: UInt32) -> String {
         guard keyCode > 0, let key = Key(carbonKeyCode: keyCode) else { return title }
-        let shortcut = CarbonModifiers.symbol(mods) + key.description.uppercased()
-        // Pad with spaces so shortcut aligns roughly to the right
+        let shortcut = CarbonModifiers.symbol(mods) + key.displayName.uppercased()
         return title.padding(toLength: max(title.count, 24), withPad: " ", startingAt: 0) + shortcut
     }
 
@@ -109,6 +127,6 @@ struct MenuBarMenuView: View {
             return profile.name
         }
         let mods = CarbonModifiers.symbol(profile.modifiers)
-        return "\(profile.name)  \(mods)\(key.description.uppercased())"
+        return "\(profile.name)  \(mods)\(key.displayName.uppercased())"
     }
 }
