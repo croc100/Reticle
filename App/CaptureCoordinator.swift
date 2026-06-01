@@ -337,16 +337,16 @@ final class CaptureCoordinator: ObservableObject {
             // Imgur upload
             if optSet.contains(.uploadToImgur) {
                 let clientID = Defaults[.imgurClientID]
-                guard !clientID.isEmpty else {
+                if clientID.isEmpty {
                     showError(NSError(domain: "Reticle", code: 0,
                                      userInfo: [NSLocalizedDescriptionKey: "Imgur Client ID not configured. Add it in Settings → Pipeline."]))
-                    return
-                }
-                Task {
-                    do {
-                        let url = try await ImgurUploader(clientID: clientID).upload(image)
-                        handleUploadedURL(url, openInBrowser: openAfterUpload)
-                    } catch { await MainActor.run { self.showError(error) } }
+                } else {
+                    Task {
+                        do {
+                            let url = try await ImgurUploader(clientID: clientID).upload(image)
+                            handleUploadedURL(url, openInBrowser: openAfterUpload)
+                        } catch { await MainActor.run { self.showError(error) } }
+                    }
                 }
             }
 
@@ -354,80 +354,80 @@ final class CaptureCoordinator: ObservableObject {
                 let bucket = Defaults[.s3Bucket]
                 let keyID  = Defaults[.s3AccessKeyID]
                 let secret = Defaults[.s3SecretAccessKey]
-                guard !bucket.isEmpty && !keyID.isEmpty && !secret.isEmpty else {
+                if bucket.isEmpty || keyID.isEmpty || secret.isEmpty {
                     showError(NSError(domain: "Reticle", code: 0,
                                      userInfo: [NSLocalizedDescriptionKey:
                                         "S3 not configured. Fill in bucket, access key, and secret in Settings → Pipeline."]))
-                    return
-                }
-                let s3Config = S3Uploader.Config(
-                    bucket: bucket,
-                    region: Defaults[.s3Region].isEmpty ? "us-east-1" : Defaults[.s3Region],
-                    accessKeyID: keyID,
-                    secretAccessKey: secret,
-                    keyPrefix: Defaults[.s3KeyPrefix],
-                    publicURLTemplate: Defaults[.s3PublicURLTemplate],
-                    pathStyle: Defaults[.s3PathStyle]
-                )
-                Task {
-                    do {
-                        let url = try await S3Uploader(config: s3Config).upload(image)
-                        handleUploadedURL(url, openInBrowser: openAfterUpload)
-                    } catch { await MainActor.run { self.showError(error) } }
+                } else {
+                    let s3Config = S3Uploader.Config(
+                        bucket: bucket,
+                        region: Defaults[.s3Region].isEmpty ? "us-east-1" : Defaults[.s3Region],
+                        accessKeyID: keyID,
+                        secretAccessKey: secret,
+                        keyPrefix: Defaults[.s3KeyPrefix],
+                        publicURLTemplate: Defaults[.s3PublicURLTemplate],
+                        pathStyle: Defaults[.s3PathStyle]
+                    )
+                    Task {
+                        do {
+                            let url = try await S3Uploader(config: s3Config).upload(image)
+                            handleUploadedURL(url, openInBrowser: openAfterUpload)
+                        } catch { await MainActor.run { self.showError(error) } }
+                    }
                 }
             }
 
             if optSet.contains(.uploadCustomHTTP) {
                 let endpointURL = Defaults[.customHTTPURL]
-                guard !endpointURL.isEmpty else {
+                if endpointURL.isEmpty {
                     showError(NSError(domain: "Reticle", code: 0,
                                      userInfo: [NSLocalizedDescriptionKey:
                                         "Custom HTTP URL not configured. Add it in Settings → Pipeline."]))
-                    return
-                }
-                let headersRaw = Defaults[.customHTTPHeadersRaw]
-                var headers: [String: String] = [:]
-                for line in headersRaw.components(separatedBy: "\n") {
-                    let parts = line.components(separatedBy: ":").map { $0.trimmingCharacters(in: .whitespaces) }
-                    if parts.count >= 2 { headers[parts[0]] = parts[1...].joined(separator: ":") }
-                }
-                let httpConfig = CustomHTTPUploader.Config(
-                    method: Defaults[.customHTTPMethod],
-                    url: endpointURL,
-                    fileFormField: Defaults[.customHTTPFileField],
-                    responseURLPath: Defaults[.customHTTPResponsePath],
-                    headers: headers
-                )
-                Task {
-                    do {
-                        let url = try await CustomHTTPUploader(config: httpConfig).upload(image)
-                        handleUploadedURL(url, openInBrowser: openAfterUpload)
-                    } catch { await MainActor.run { self.showError(error) } }
+                } else {
+                    let headersRaw = Defaults[.customHTTPHeadersRaw]
+                    var headers: [String: String] = [:]
+                    for line in headersRaw.components(separatedBy: "\n") {
+                        let parts = line.components(separatedBy: ":").map { $0.trimmingCharacters(in: .whitespaces) }
+                        if parts.count >= 2 { headers[parts[0]] = parts[1...].joined(separator: ":") }
+                    }
+                    let httpConfig = CustomHTTPUploader.Config(
+                        method: Defaults[.customHTTPMethod],
+                        url: endpointURL,
+                        fileFormField: Defaults[.customHTTPFileField],
+                        responseURLPath: Defaults[.customHTTPResponsePath],
+                        headers: headers
+                    )
+                    Task {
+                        do {
+                            let url = try await CustomHTTPUploader(config: httpConfig).upload(image)
+                            handleUploadedURL(url, openInBrowser: openAfterUpload)
+                        } catch { await MainActor.run { self.showError(error) } }
+                    }
                 }
             }
 
             if optSet.contains(.uploadToSFTP) {
                 let host = Defaults[.sftpHost]
-                guard !host.isEmpty else {
+                if host.isEmpty {
                     showError(NSError(domain: "Reticle", code: 0,
                                      userInfo: [NSLocalizedDescriptionKey:
                                         "SFTP host not configured. Add it in Settings → Pipeline."]))
-                    return
-                }
-                let sftpConfig = SFTPUploader.Config(
-                    host: host,
-                    port: Defaults[.sftpPort],
-                    username: Defaults[.sftpUsername],
-                    password: Defaults[.sftpPassword],
-                    privateKeyPath: Defaults[.sftpPrivateKeyPath],
-                    remotePath: Defaults[.sftpRemotePath],
-                    publicBaseURL: Defaults[.sftpPublicURL]
-                )
-                Task {
-                    do {
-                        let url = try await SFTPUploader(config: sftpConfig).upload(image)
-                        handleUploadedURL(url, openInBrowser: openAfterUpload)
-                    } catch { await MainActor.run { self.showError(error) } }
+                } else {
+                    let sftpConfig = SFTPUploader.Config(
+                        host: host,
+                        port: Defaults[.sftpPort],
+                        username: Defaults[.sftpUsername],
+                        password: Defaults[.sftpPassword],
+                        privateKeyPath: Defaults[.sftpPrivateKeyPath],
+                        remotePath: Defaults[.sftpRemotePath],
+                        publicBaseURL: Defaults[.sftpPublicURL]
+                    )
+                    Task {
+                        do {
+                            let url = try await SFTPUploader(config: sftpConfig).upload(image)
+                            handleUploadedURL(url, openInBrowser: openAfterUpload)
+                        } catch { await MainActor.run { self.showError(error) } }
+                    }
                 }
             }
 

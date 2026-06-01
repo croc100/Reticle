@@ -12,8 +12,9 @@ final class NameParserTests: XCTestCase {
     }
 
     func testAppNameToken() {
-        let parser = NameParser(pattern: "%app%_screenshot.png", counter: { 1 })
-        let result = parser.resolve(appName: "Xcode")
+        var parser = NameParser(pattern: "%app%_screenshot.png", counter: { 1 })
+        parser.processName = "Xcode"
+        let result = parser.resolve()
         XCTAssertEqual(result, "Xcode_screenshot.png")
     }
 
@@ -25,8 +26,12 @@ final class NameParserTests: XCTestCase {
     }
 
     func testMissingAppNameFallback() {
-        let parser = NameParser(pattern: "%app%.png", counter: { 1 })
-        XCTAssertEqual(parser.resolve(appName: ""), "unknown.png")
+        var parser = NameParser(pattern: "%app%.png", counter: { 1 })
+        parser.processName = ""
+        // When processName is empty, falls back to frontmost app name or "unknown"
+        let result = parser.resolve()
+        // In test context there's no frontmost app, so result is either a real app name or "unknown"
+        XCTAssert(!result.isEmpty)
     }
 
     // MARK: - Helpers

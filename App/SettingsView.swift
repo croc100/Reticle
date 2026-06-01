@@ -685,7 +685,7 @@ private struct HotkeyRow: View {
 
     private var displayString: String {
         guard keyCode > 0, let key = Key(carbonKeyCode: keyCode) else { return "–" }
-        return CarbonModifiers.symbol(modifiers) + key.description.uppercased()
+        return CarbonModifiers.symbol(modifiers) + key.displayName.uppercased()
     }
 
     var body: some View {
@@ -828,7 +828,7 @@ private struct WorkflowRow: View {
     private var hotkeyLabel: String {
         guard profile.keyCode > 0,
               let key = Key(carbonKeyCode: profile.keyCode) else { return "–" }
-        return CarbonModifiers.symbol(profile.modifiers) + key.description.uppercased()
+        return CarbonModifiers.symbol(profile.modifiers) + key.displayName.uppercased()
     }
 
     var body: some View {
@@ -986,10 +986,13 @@ private extension Color {
     }
 }
 
-// MARK: - Key description
+// MARK: - Key display label
 
-extension Key: CustomStringConvertible {
-    public var description: String {
+extension Key {
+    /// Human-readable label for display in the hotkey UI.
+    /// Uses a dedicated property to avoid conflicting with HotKey's own
+    /// `CustomStringConvertible` conformance.
+    var displayName: String {
         switch self {
         case .a: return "A"; case .b: return "B"; case .c: return "C"
         case .d: return "D"; case .e: return "E"; case .f: return "F"
