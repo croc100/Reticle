@@ -29,9 +29,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved') }}
+          key: ${{ runner.os }}-spm-v2-${{ hashFiles('Package.resolved') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
+            ${{ runner.os }}-spm-v2-
 
       - name: Build (debug)
         run: swift build
@@ -74,8 +74,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .build
-          key: ${{ runner.os }}-spm-release-${{ hashFiles('Package.resolved') }}
-          restore-keys: ${{ runner.os }}-spm-
+          key: ${{ runner.os }}-spm-release-v2-${{ hashFiles('Package.resolved') }}
+          restore-keys: ${{ runner.os }}-spm-v2-
 
       - name: Build release binary
         run: swift build -c release --product ReticleApp

@@ -5,8 +5,32 @@ import Footer from '../components/Footer.astro';
 
 const releases = [
   {
+    version: '0.2.0',
+    date: '2026-06-03',
+    tag: 'alpha',
+    changes: {
+      added: [
+        'Screen recording — MP4 (H.264) and GIF via SCStream + AVAssetWriter',
+        'App onboarding flow for first-launch setup',
+        'App icon and site logo',
+      ],
+      fixed: [
+        'Crash in Capturer.swift when task group exhausts — guard let replaces force-unwrap',
+        'Crash on headless/no-screen: NSScreen.screens[0] → .first with guard',
+        'Crash on nil URL in AppDelegate, OnboardingView, and CaptureCoordinator',
+        'Data race in ScreenRecorder — NSLock added around all nonisolated(unsafe) encoder access',
+        'AVAssetWriter crash on 1-pixel capture rects after &~1 dimension masking',
+        'Silent data clobber when two workflow tasks ran concurrently (profileDestinationsOverride now passed as parameter)',
+        'Directory creation failures previously dropped silently — now logged',
+        'OCR errors now shown in result panel instead of silent empty string',
+        'Memory: struct captures in singleton closures replaced with direct coordinator reference',
+      ],
+      changed: [],
+    },
+  },
+  {
     version: '0.1.0-alpha',
-    date: '2025-05-30',
+    date: '2026-05-30',
     tag: 'alpha',
     changes: {
       added: [
