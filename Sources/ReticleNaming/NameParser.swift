@@ -35,7 +35,7 @@ public struct NameParser: @unchecked Sendable {
         let cal = Calendar.current
         var result = pattern
 
-        // ── Date / Time ────────────────────────────────────────────────────────
+        // ── Date / Time ──────────────────────────────────────────────
         let year   = cal.component(.year,   from: date)
         let month  = cal.component(.month,  from: date)
         let day    = cal.component(.day,    from: date)
@@ -75,14 +75,14 @@ public struct NameParser: @unchecked Sendable {
             .replacingOccurrences(of: "%weeknum%", with: String(format: "%02d", weekNum))
             .replacingOccurrences(of: "%unix%",    with: String(unixTimestamp))
 
-        // ── Counter / Increment ────────────────────────────────────────────────
+        // ── Counter / Increment ──────────────────────────────────────
         let n = counter()
         result = result
             .replacingOccurrences(of: "%counter%", with: String(n))
             .replacingOccurrences(of: "%ix%",      with: String(format: "%x", n))
             .replacingOccurrences(of: "%ia%",      with: toBase36(n).lowercased())
 
-        // ── Random ────────────────────────────────────────────────────────────
+        // ── Random ───────────────────────────────────────────────────
         result = result
             .replacingOccurrences(of: "%rn%",   with: String(Int.random(in: 0...9)))
             .replacingOccurrences(of: "%ra%",   with: randomAlphanumeric(1))
@@ -90,12 +90,12 @@ public struct NameParser: @unchecked Sendable {
             .replacingOccurrences(of: "%guid%", with: UUID().uuidString.lowercased())
             .replacingOccurrences(of: "%uuid%", with: UUID().uuidString)
 
-        // ── Image dimensions ──────────────────────────────────────────────────
+        // ── Image dimensions ─────────────────────────────────────────
         result = result
             .replacingOccurrences(of: "%width%",  with: imageWidth  > 0 ? String(imageWidth)  : "")
             .replacingOccurrences(of: "%height%", with: imageHeight > 0 ? String(imageHeight) : "")
 
-        // ── System / app ──────────────────────────────────────────────────────
+        // ── System / app ─────────────────────────────────────────────
         let pn = processName.isEmpty ? (activeAppName() ?? "unknown") : processName
         result = result
             .replacingOccurrences(of: "%app%",  with: pn)

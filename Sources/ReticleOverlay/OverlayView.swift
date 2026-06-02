@@ -311,7 +311,7 @@ final class OverlayView: NSView {
 
         // Draw selected area clear + path stroke
         if freehandPoints.count > 3 {
-            let closedPath = path.copy() as! NSBezierPath
+            guard let closedPath = path.copy() as? NSBezierPath else { return }
             closedPath.close()
             NSGraphicsContext.saveGraphicsState()
             closedPath.addClip()

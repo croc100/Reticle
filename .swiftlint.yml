@@ -21,6 +21,9 @@ included:
 excluded:
   - .build
   - Packages
+  # Large UI files — complex by necessity (NSView subclass, annotation engine)
+  - Sources/ReticleOverlay/OverlayView.swift
+  - Sources/ReticleOverlay/Editor/Annotation.swift
 
 # ── Lengths ──────────────────────────────────────────────────────────────────
 line_length:
