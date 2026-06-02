@@ -11,17 +11,21 @@ struct ReticleApp: App {
     private let hotkeyManager = HotkeyManager()
 
     init() {
-        hotkeyManager.onCaptureRegion       = { [self] in coordinator.captureWithOverlay()   }
-        hotkeyManager.onCaptureFullScreen   = { [self] in coordinator.captureFullScreen()    }
-        hotkeyManager.onClipboardHistory    = { ClipboardHistoryPanel.shared.toggle()        }
-        hotkeyManager.onCaptureLastRegion   = { [self] in coordinator.captureLastRegion()    }
-        hotkeyManager.onCaptureWindowPicker = { [self] in coordinator.captureWindowPicker()  }
-        hotkeyManager.onWorkflow            = { [self] id in coordinator.runWorkflow(profileID: id) }
+        // Capture the class instances directly so long-lived singletons
+        // don't retain the App struct value (which contains @StateObject wrappers).
+        let coord = coordinator
 
-        AutoCaptureManager.shared.captureAction = { [self] mode in
+        hotkeyManager.onCaptureRegion       = { coord.captureWithOverlay()          }
+        hotkeyManager.onCaptureFullScreen   = { coord.captureFullScreen()           }
+        hotkeyManager.onClipboardHistory    = { ClipboardHistoryPanel.shared.toggle() }
+        hotkeyManager.onCaptureLastRegion   = { coord.captureLastRegion()           }
+        hotkeyManager.onCaptureWindowPicker = { coord.captureWindowPicker()         }
+        hotkeyManager.onWorkflow            = { id in coord.runWorkflow(profileID: id) }
+
+        AutoCaptureManager.shared.captureAction = { [coord] mode in
             switch mode {
-            case .activeScreen, .fullScreen: coordinator.captureFullScreen()
-            case .lastRegion:               coordinator.captureLastRegion()
+            case .activeScreen, .fullScreen: coord.captureFullScreen()
+            case .lastRegion:               coord.captureLastRegion()
             }
         }
 

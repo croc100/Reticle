@@ -174,9 +174,9 @@ private struct PermissionPage: View {
             if !granted {
                 VStack(spacing: 10) {
                     Button("Open System Settings") {
-                        NSWorkspace.shared.open(
-                            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
-                        )
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+                            NSWorkspace.shared.open(url)
+                        }
                     }
                     .buttonStyle(AccentButtonStyle())
 

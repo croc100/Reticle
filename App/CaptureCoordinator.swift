@@ -44,7 +44,7 @@ final class CaptureCoordinator: ObservableObject {
 
     // MARK: - Overlay flow
 
-    private func runOverlayCapture() async {
+    private func runOverlayCapture(profileDestinations: [String]? = nil) async {
         do {
             await applyDelay()
 
@@ -63,27 +63,22 @@ final class CaptureCoordinator: ObservableObject {
             // Persist for Last Region
             Defaults[.lastCaptureRect] = StoredRect(sourceRect)
 
-            await finalize(image: image, sourceRect: sourceRect, scaleFactor: scale)
+            await finalize(image: image, sourceRect: sourceRect, scaleFactor: scale, profileDestinations: profileDestinations)
 
         } catch { showError(error) }
     }
 
     // MARK: - Workflow Profile execution
 
-    /// When non-nil, `finalize` uses these output destinations instead of the global defaults.
-    /// Set immediately before each workflow capture and cleared at the start of `finalize`.
-    private var profileDestinationsOverride: [String]? = nil
-
     private func runWorkflowProfile(id: UUID) async {
         guard let profile = Defaults[.workflowProfiles].first(where: { $0.id == id }),
               profile.enabled else { return }
-        // Inject per-profile output destinations; cleared automatically in finalize.
-        profileDestinationsOverride = profile.outputDestinations.isEmpty ? nil : profile.outputDestinations
+        let overrideDestinations: [String]? = profile.outputDestinations.isEmpty ? nil : profile.outputDestinations
         switch profile.captureMode {
-        case "region":     await runOverlayCapture()
-        case "window":     await runWindowPicker()
-        case "fullScreen": await runFullScreen()
-        default:           await runOverlayCapture()
+        case "region":     await runOverlayCapture(profileDestinations: overrideDestinations)
+        case "window":     await runWindowPicker(profileDestinations: overrideDestinations)
+        case "fullScreen": await runFullScreen(profileDestinations: overrideDestinations)
+        default:           await runOverlayCapture(profileDestinations: overrideDestinations)
         }
     }
 
@@ -137,11 +132,11 @@ final class CaptureCoordinator: ObservableObject {
 
     // MARK: - Full-screen flow
 
-    private func runFullScreen() async {
+    private func runFullScreen(profileDestinations: [String]? = nil) async {
         do {
             await applyDelay()
             let shot = try await capturer.capture(mode: .fullScreen(displayID: CGMainDisplayID()))
-            await finalize(image: shot.image, sourceRect: shot.sourceRect, scaleFactor: shot.scaleFactor)
+            await finalize(image: shot.image, sourceRect: shot.sourceRect, scaleFactor: shot.scaleFactor, profileDestinations: profileDestinations)
         } catch { showError(error) }
     }
 
@@ -162,7 +157,7 @@ final class CaptureCoordinator: ObservableObject {
 
     // MARK: - Window Picker
 
-    private func runWindowPicker() async {
+    private func runWindowPicker(profileDestinations: [String]? = nil) async {
         do {
             await applyDelay()
             let (displays, scWindows) = try await provider.fetchContent()
@@ -178,7 +173,7 @@ final class CaptureCoordinator: ObservableObject {
             guard case .captured(let image, let sourceRect, let scale) = result else { return }
 
             Defaults[.lastCaptureRect] = StoredRect(sourceRect)
-            await finalize(image: image, sourceRect: sourceRect, scaleFactor: scale)
+            await finalize(image: image, sourceRect: sourceRect, scaleFactor: scale, profileDestinations: profileDestinations)
         } catch { showError(error) }
     }
 
@@ -197,10 +192,9 @@ final class CaptureCoordinator: ObservableObject {
             alert.alertStyle = .warning
             alert.addButton(withTitle: "Open System Settings")
             alert.addButton(withTitle: "Cancel")
-            if alert.runModal() == .alertFirstButtonReturn {
-                NSWorkspace.shared.open(
-                    URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-                )
+            if alert.runModal() == .alertFirstButtonReturn,
+               let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
             }
             return
         }
@@ -232,11 +226,7 @@ final class CaptureCoordinator: ObservableObject {
 
     // MARK: - Shared finalize
 
-    private func finalize(image: CGImage, sourceRect: CGRect, scaleFactor: CGFloat) async {
-        // Consume the per-profile override (if any) set by runWorkflowProfile.
-        let profileDestinations = profileDestinationsOverride
-        profileDestinationsOverride = nil
-
+    private func finalize(image: CGImage, sourceRect: CGRect, scaleFactor: CGFloat, profileDestinations: [String]? = nil) async {
         do {
             // Compute effective option set. When a workflow profile provides explicit output
             // destinations we replace only the "where to send" options and keep all other
@@ -434,8 +424,12 @@ final class CaptureCoordinator: ObservableObject {
             if optSet.contains(.ocr) {
                 Task {
                     let langs = Defaults[.ocrLanguages]
-                    let text = (try? await OCRProcessor(languages: langs).recognizeText(in: image)) ?? ""
-                    OCRResultPanel.shared.show(text: text)
+                    do {
+                        let text = try await OCRProcessor(languages: langs).recognizeText(in: image)
+                        OCRResultPanel.shared.show(text: text)
+                    } catch {
+                        OCRResultPanel.shared.show(text: "OCR failed: \(error.localizedDescription)")
+                    }
                 }
             }
 
@@ -485,6 +479,11 @@ final class CaptureCoordinator: ObservableObject {
     }
 
     private func createDirectoryIfNeeded(_ url: URL) {
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        } catch {
+            // Non-fatal: directory may already exist or we lack permission.
+            print("[Reticle] createDirectoryIfNeeded failed for \(url.path): \(error.localizedDescription)")
+        }
     }
 }

@@ -32,7 +32,8 @@ public final class ScreenRecorder: NSObject {
     private let callbackQueue = DispatchQueue(label: "com.reticle.recorder", qos: .userInitiated)
 
     // Encoders are accessed from the SCStream callback (nonisolated) and from
-    // main-actor methods. We guard all access ourselves, so nonisolated(unsafe) is safe.
+    // main-actor methods. All access is serialized via encoderLock.
+    nonisolated private let encoderLock = NSLock()
     nonisolated(unsafe) private var mp4Encoder: MP4Encoder?
     nonisolated(unsafe) private var gifEncoder: GIFEncoder?
 
@@ -86,14 +87,22 @@ public final class ScreenRecorder: NSObject {
         streamConfig.width  = streamConfig.width  & ~1
         streamConfig.height = streamConfig.height & ~1
 
+        // Guard against zero-sized rects after alignment (e.g. 1×1 input → 0×0 after masking)
+        guard streamConfig.width > 0, streamConfig.height > 0 else {
+            state = .idle
+            throw RecordingError.encoderFailure("Capture rect is too small — minimum 2×2 pixels after alignment.")
+        }
+
         let frameSize = CGSize(width: streamConfig.width, height: streamConfig.height)
 
-        // Set up encoder for chosen format
+        // Set up encoder for chosen format (create first, then assign under lock)
         switch config.format {
         case .mp4:
-            mp4Encoder = try MP4Encoder(outputURL: config.outputURL, size: frameSize, fps: config.fps)
+            let encoder = try MP4Encoder(outputURL: config.outputURL, size: frameSize, fps: config.fps)
+            encoderLock.withLock { mp4Encoder = encoder }
         case .gif:
-            gifEncoder = GIFEncoder(outputURL: config.outputURL, fps: config.fps)
+            let encoder = GIFEncoder(outputURL: config.outputURL, fps: config.fps)
+            encoderLock.withLock { gifEncoder = encoder }
         }
 
         let scStream = SCStream(filter: filter, configuration: streamConfig, delegate: self)
@@ -129,15 +138,17 @@ public final class ScreenRecorder: NSObject {
             self.stream = nil
         }
 
-        // Encode output
+        // Encode output (copy references under lock, then finalize outside the lock)
+        let mp4 = encoderLock.withLock { mp4Encoder }
+        let gif  = encoderLock.withLock { gifEncoder }
+        encoderLock.withLock { mp4Encoder = nil; gifEncoder = nil }
+
         let url: URL
         do {
-            if let encoder = mp4Encoder {
+            if let encoder = mp4 {
                 url = try await encoder.finish()
-                mp4Encoder = nil
-            } else if let encoder = gifEncoder {
+            } else if let encoder = gif {
                 url = try encoder.finish()
-                gifEncoder = nil
             } else {
                 throw RecordingError.encoderFailure("No encoder active.")
             }
@@ -158,8 +169,10 @@ public final class ScreenRecorder: NSObject {
         Task {
             try? await stream?.stopCapture()
             self.stream = nil
-            self.mp4Encoder = nil
-            self.gifEncoder = nil
+            self.encoderLock.withLock {
+                self.mp4Encoder = nil
+                self.gifEncoder = nil
+            }
             self.state = .idle
         }
     }
@@ -176,10 +189,13 @@ extension ScreenRecorder: SCStreamOutput {
         guard type == .screen else { return }
         guard sampleBuffer.isValid else { return }
 
-        // Route to the correct encoder
-        if let encoder = mp4Encoder {
+        // Copy references under lock, then use outside the lock
+        let mp4 = encoderLock.withLock { mp4Encoder }
+        let gif  = encoderLock.withLock { gifEncoder }
+
+        if let encoder = mp4 {
             encoder.append(sampleBuffer)
-        } else if let encoder = gifEncoder {
+        } else if let encoder = gif {
             // Extract CGImage from pixel buffer for GIF
             guard
                 let pixelBuffer = sampleBuffer.imageBuffer,

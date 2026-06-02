@@ -53,7 +53,7 @@ public final class OverlayWindowController {
         let ptH = CGFloat(image.height) / scaleFactor
 
         // Constrain editor window to 80% of the main screen
-        let screen = NSScreen.main ?? NSScreen.screens[0]
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         let maxW = screen.visibleFrame.width  * 0.85
         let maxH = screen.visibleFrame.height * 0.85
         let fitScale = min(1.0, min(maxW / ptW, maxH / ptH))

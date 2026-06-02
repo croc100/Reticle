@@ -175,7 +175,10 @@ private func withTimeout<T>(
             try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             throw CaptureError.timeout
         }
-        let result = try await group.next()!
+        guard let result = try await group.next() else {
+            group.cancelAll()
+            throw CaptureError.timeout
+        }
         group.cancelAll()
         return result
     }
