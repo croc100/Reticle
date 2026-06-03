@@ -9,11 +9,13 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testMaskRegionCodable() throws {
-        let mask = MaskRegion(rect: CGRect(x: 10, y: 20, width: 100, height: 50), style: .blur(radius: 15))
+        let rect = CGRect(x: 10, y: 20, width: 100, height: 50)
+        let mask = MaskRegion(rule: .rect(rect), style: .blur(radius: 15))
         let data = try JSONEncoder().encode(mask)
         let decoded = try JSONDecoder().decode(MaskRegion.self, from: data)
         XCTAssertEqual(decoded.id, mask.id)
-        XCTAssertEqual(decoded.rect, mask.rect)
+        guard case .rect(let decodedRect) = decoded.rule else { XCTFail("wrong rule"); return }
+        XCTAssertEqual(decodedRect, rect)
     }
 
     private func makeTestImage() -> CGImage {
