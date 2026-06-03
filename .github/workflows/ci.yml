@@ -147,28 +147,28 @@ jobs:
             | grep -oP '(?<=sparkle:edSignature=")[^"]+')
 
           # Prepend new <item> to the appcast channel
-          python3 - <<PYEOF
-          import re, pathlib
+          BUILD=$(grep -m1 CFBundleVersion App/Info.plist | grep -oE '[0-9]+')
+          python3 - "$VERSION" "$PUB_DATE" "$DMG_URL" "$ED_SIG" "$DMG_SIZE" "$BUILD" <<'PYEOF'
+          import re, pathlib, sys
+          ver, pub_date, dmg_url, ed_sig, dmg_size, build = sys.argv[1:]
+          item = (
+              "\n    <item>\n"
+              "      <title>Reticle " + ver + "</title>\n"
+              "      <pubDate>" + pub_date + "</pubDate>\n"
+              "      <sparkle:version>" + build + "</sparkle:version>\n"
+              "      <sparkle:shortVersionString>" + ver + "</sparkle:shortVersionString>\n"
+              "      <sparkle:releaseNotesLink>https://croc100.github.io/Reticle/changelog/</sparkle:releaseNotesLink>\n"
+              "      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>\n"
+              "      <enclosure\n"
+              "        url=\"" + dmg_url + "\"\n"
+              "        sparkle:edSignature=\"" + ed_sig + "\"\n"
+              "        length=\"" + dmg_size + "\"\n"
+              "        type=\"application/octet-stream\"\n"
+              "      />\n"
+              "    </item>"
+          )
           appcast = pathlib.Path("site/public/appcast.xml").read_text()
-          item = f"""
-    <item>
-      <title>Reticle ${{ env.VERSION }}</title>
-      <pubDate>{PUB_DATE}</pubDate>
-      <sparkle:version>$(grep -m1 CFBundleVersion App/Info.plist | grep -oE '[0-9]+')</sparkle:version>
-      <sparkle:shortVersionString>${{ env.VERSION }}</sparkle:shortVersionString>
-      <sparkle:releaseNotesLink>https://croc100.github.io/Reticle/changelog/</sparkle:releaseNotesLink>
-      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure
-        url="{DMG_URL}"
-        sparkle:edSignature="{ED_SIG}"
-        length="{DMG_SIZE}"
-        type="application/octet-stream"
-      />
-    </item>
-          """
-          # Insert before closing </channel>
           appcast = appcast.replace("  </channel>", item + "\n  </channel>", 1)
-          # Remove placeholder item if present
           appcast = re.sub(r'\s*<item>.*?PLACEHOLDER.*?</item>', '', appcast, flags=re.DOTALL)
           pathlib.Path("site/public/appcast.xml").write_text(appcast)
           PYEOF
