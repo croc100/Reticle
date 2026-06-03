@@ -5,7 +5,7 @@
 <h1 align="center">Reticle</h1>
 
 <p align="center">
-  A free, open-source screenshot tool for macOS — built for people who take screenshots seriously.
+  A free macOS screenshot tool — source available, free to use, built for people who take screenshots seriously.
 </p>
 
 <p align="center">
@@ -14,7 +14,7 @@
   </a>
   <img src="https://img.shields.io/badge/platform-macOS%2013%2B-blue" />
   <img src="https://img.shields.io/badge/swift-5.9%2B-orange" />
-  <img src="https://img.shields.io/badge/license-Apache%202.0-blue" />
+  <img src="https://img.shields.io/badge/license-source%20available-lightgrey" />
   <img src="https://img.shields.io/github/v/release/croc100/Reticle?include_prereleases&label=release&color=yellow" />
   <a href="https://github.com/croc100/homebrew-reticle">
     <img src="https://img.shields.io/badge/homebrew-tap-orange?logo=homebrew" alt="Homebrew tap" />
@@ -31,7 +31,7 @@
 
 Reticle is a **macOS-native screenshot tool** that brings the full power of [ShareX](https://getsharex.com/) — the gold standard on Windows — to macOS.
 
-Most macOS screenshot tools are either too simple (built-in Screenshot.app) or too expensive (CleanShot X at $29). Reticle is **completely free and open source**, with a ShareX-style annotation toolbar, workflow automation, and cloud upload built in from day one.
+Most macOS screenshot tools are either too simple (built-in Screenshot.app) or too expensive (CleanShot X at $29). Reticle is **completely free to use**, with a ShareX-style annotation toolbar, workflow automation, and cloud upload built in from day one.
 
 ---
 
@@ -272,6 +272,6 @@ For bug reports and feature requests, use the [issue tracker](https://github.com
 
 ## License
 
-[Apache License 2.0](LICENSE) — free to use, modify, and distribute, including commercially.
+[Apache 2.0 + Commons Clause](LICENSE) — free to use and modify for personal and non-commercial purposes. Commercial sale or redistribution of the software requires explicit permission from the author.
 
-© 2026 Reticle Contributors
+© 2026 croc100
