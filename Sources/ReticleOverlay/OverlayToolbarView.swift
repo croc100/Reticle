@@ -134,12 +134,22 @@ struct OverlayToolbarView: View {
                         .font(.caption).monospacedDigit().frame(width: 32)
                 }.frame(width: 88)
             }
+            if vm.activeTool == .speechBalloon {
+                BalloonTailPicker(selection: $vm.balloonTailDirection)
+            }
             if vm.activeTool == .blur {
                 HStack(spacing: 4) {
                     Image(systemName: "aqi.low")
                     Slider(value: $vm.blurRadius, in: 5...50).frame(width: 80)
                     Image(systemName: "aqi.high")
                 }.font(.caption)
+            }
+            if vm.activeTool == .spotlight {
+                HStack(spacing: 4) {
+                    Image(systemName: "sun.min").font(.caption)
+                    Slider(value: $vm.spotlightOpacity, in: 0.2...0.95).frame(width: 72)
+                    Image(systemName: "sun.max").font(.caption)
+                }
             }
             if vm.activeTool == .pixelate {
                 HStack(spacing: 4) {
@@ -233,36 +243,142 @@ private struct UndoButton: View {
 
 // MARK: - LineStylePicker
 
-/// A compact 3-button control to choose between solid / dashed / dotted strokes.
+/// Compact 3-button control — each button shows a drawn stroke preview (solid / dashed / dotted).
 private struct LineStylePicker: View {
     @Binding var selection: LineStyle
 
-    private let items: [(LineStyle, String, String)] = [
-        (.solid,  "—",   "Solid"),
-        (.dashed, "╌",   "Dashed"),
-        (.dotted, "···", "Dotted"),
-    ]
-
     var body: some View {
         HStack(spacing: 1) {
-            ForEach(items, id: \.0.rawValue) { style, label, tip in
-                Button {
+            ForEach(LineStyle.allCases, id: \.rawValue) { style in
+                LineStyleButton(style: style, isSelected: selection == style) {
                     selection = style
-                } label: {
-                    Text(label)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .frame(width: 26, height: 22)
-                        .background(selection == style
-                                    ? Color.primary.opacity(0.15)
-                                    : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
-                .buttonStyle(.plain)
-                .help(tip)
             }
         }
         .padding(2)
         .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 5))
+    }
+}
+
+private struct LineStyleButton: View {
+    let style: LineStyle
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var hovered = false
+
+    private var tip: String {
+        switch style {
+        case .solid:  return "Solid"
+        case .dashed: return "Dashed"
+        case .dotted: return "Dotted"
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Canvas { ctx, size in
+                let y = size.height / 2
+                var path = Path()
+                path.move(to: CGPoint(x: 4, y: y))
+                path.addLine(to: CGPoint(x: size.width - 4, y: y))
+                var stroke = StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)
+                switch style {
+                case .solid:  break
+                case .dashed: stroke.dash = [5, 3]
+                case .dotted: stroke.dash = [1.5, 3]; stroke.lineCap = .round
+                }
+                ctx.stroke(path, with: .foreground, style: stroke)
+            }
+            .frame(width: 28, height: 22)
+            .background(
+                isSelected ? Color.primary.opacity(0.15) :
+                hovered    ? Color.primary.opacity(0.07) : Color.clear
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+        .buttonStyle(.plain)
+        .help(tip)
+        .onHover { hovered = $0 }
+    }
+}
+
+// MARK: - ColorWell
+
+// MARK: - BalloonTailPicker
+
+/// 4-button control to choose speech balloon tail direction.
+private struct BalloonTailPicker: View {
+    @Binding var selection: BalloonTailDirection
+
+    var body: some View {
+        HStack(spacing: 1) {
+            ForEach(BalloonTailDirection.allCases, id: \.rawValue) { dir in
+                BalloonTailButton(direction: dir, isSelected: selection == dir) {
+                    selection = dir
+                }
+            }
+        }
+        .padding(2)
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 5))
+    }
+}
+
+private struct BalloonTailButton: View {
+    let direction: BalloonTailDirection
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Canvas { ctx, size in
+                // Draw a simple speech bubble silhouette with a tail in the correct corner
+                let w = size.width, h = size.height
+                let inset: CGFloat = 3, tail: CGFloat = 4, r: CGFloat = 2
+
+                // Body rect
+                let bodyRect = CGRect(x: inset, y: inset + tail * 0.5,
+                                      width: w - inset * 2, height: h - inset * 2 - tail * 0.7)
+                var bodyPath = Path(roundedRect: bodyRect, cornerRadius: r)
+
+                // Tail triangle
+                var tailPts: [CGPoint]
+                switch direction {
+                case .bottomLeft:
+                    tailPts = [CGPoint(x: bodyRect.minX + 4, y: bodyRect.maxY),
+                               CGPoint(x: bodyRect.minX,     y: bodyRect.maxY + tail),
+                               CGPoint(x: bodyRect.minX + 7, y: bodyRect.maxY)]
+                case .bottomRight:
+                    tailPts = [CGPoint(x: bodyRect.maxX - 4, y: bodyRect.maxY),
+                               CGPoint(x: bodyRect.maxX,     y: bodyRect.maxY + tail),
+                               CGPoint(x: bodyRect.maxX - 7, y: bodyRect.maxY)]
+                case .topLeft:
+                    tailPts = [CGPoint(x: bodyRect.minX + 4, y: bodyRect.minY),
+                               CGPoint(x: bodyRect.minX,     y: bodyRect.minY - tail),
+                               CGPoint(x: bodyRect.minX + 7, y: bodyRect.minY)]
+                case .topRight:
+                    tailPts = [CGPoint(x: bodyRect.maxX - 4, y: bodyRect.minY),
+                               CGPoint(x: bodyRect.maxX,     y: bodyRect.minY - tail),
+                               CGPoint(x: bodyRect.maxX - 7, y: bodyRect.minY)]
+                }
+                var tp = Path()
+                tp.move(to: tailPts[0]); tp.addLine(to: tailPts[1])
+                tp.addLine(to: tailPts[2]); tp.closeSubpath()
+                bodyPath.addPath(tp)
+
+                let opacity: Double = isSelected ? 1.0 : 0.5
+                ctx.fill(bodyPath, with: .color(.primary.opacity(opacity)))
+            }
+            .frame(width: 26, height: 22)
+            .background(
+                isSelected ? Color.primary.opacity(0.15) :
+                hovered    ? Color.primary.opacity(0.07) : Color.clear
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+        .buttonStyle(.plain)
+        .help(direction.label)
+        .onHover { hovered = $0 }
     }
 }
 

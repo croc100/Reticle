@@ -32,6 +32,10 @@ final class OverlayViewModel: ObservableObject {
     @Published var emojiSize: CGFloat = 40
     @Published var cursorSize: CGFloat = 32
     @Published var cropRect: NSRect? = nil
+    /// Spotlight dark overlay opacity (0 = transparent, 1 = opaque black).
+    @Published var spotlightOpacity: CGFloat = 0.62
+    /// Tail direction applied to the next speech balloon annotation.
+    @Published var balloonTailDirection: BalloonTailDirection = .bottomLeft
 
     // MARK: Annotations
 
@@ -205,7 +209,7 @@ final class OverlayViewModel: ObservableObject {
                 fullPath.addEllipse(in: relRect)
             }
             ctx.addPath(fullPath)
-            ctx.setFillColor(NSColor.black.withAlphaComponent(0.62).cgColor)
+            ctx.setFillColor(NSColor.black.withAlphaComponent(spotlightOpacity).cgColor)
             ctx.fillPath(using: .evenOdd)
         }
 

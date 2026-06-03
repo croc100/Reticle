@@ -589,46 +589,125 @@ final class PixelateAnnotation: Annotation, RectResizable {
 
 // MARK: - Speech Balloon
 
+/// Where the speech-bubble tail points.
+public enum BalloonTailDirection: String, CaseIterable {
+    case bottomLeft  = "bottomLeft"
+    case bottomRight = "bottomRight"
+    case topLeft     = "topLeft"
+    case topRight    = "topRight"
+
+    var sfSymbol: String {
+        switch self {
+        case .bottomLeft:  return "bubble.left"
+        case .bottomRight: return "bubble.right"
+        case .topLeft:     return "bubble.left.fill"
+        case .topRight:    return "bubble.right.fill"
+        }
+    }
+    var label: String {
+        switch self {
+        case .bottomLeft:  return "Tail bottom-left"
+        case .bottomRight: return "Tail bottom-right"
+        case .topLeft:     return "Tail top-left"
+        case .topRight:    return "Tail top-right"
+        }
+    }
+}
+
 final class SpeechBalloonAnnotation: Annotation, RectResizable {
     var rect: NSRect
     override var boundingRect: NSRect? { rect }
     var text: String
     var fontSize: CGFloat
+    var tailDirection: BalloonTailDirection
 
-    init(rect: NSRect, text: String = "", color: NSColor, fontSize: CGFloat) {
+    init(rect: NSRect, text: String = "", color: NSColor, fontSize: CGFloat,
+         tailDirection: BalloonTailDirection = .bottomLeft) {
         self.rect = rect; self.text = text; self.fontSize = fontSize
+        self.tailDirection = tailDirection
         super.init(color: color, lineWidth: 2)
     }
 
     override func draw(in _: NSRect) {
         guard rect.width > 8, rect.height > 8 else { return }
+        let fill = NSColor.white.withAlphaComponent(0.92)
 
-        // Body
-        let bodyPath = NSBezierPath(roundedRect: rect, xRadius: 8, yRadius: 8)
-        NSColor.white.withAlphaComponent(0.92).setFill()
-        bodyPath.fill()
+        // ── Body ──────────────────────────────────────────────────────────────
+        let bodyPath = NSBezierPath(roundedRect: rect, xRadius: 10, yRadius: 10)
+        fill.setFill(); bodyPath.fill()
 
-        // Tail — triangle below bottom-left of body
+        // ── Tail triangle (direction-aware) ───────────────────────────────────
+        // tail length / inset constants
+        let tailLen: CGFloat = 18     // how far the tip extends beyond the body edge
+        let tailBase: CGFloat = 16    // base width of the triangle on the body edge
+        let inset: CGFloat  = 22      // horizontal inset from the nearer corner
+
         let tailPath = NSBezierPath()
-        let bx = rect.minX + 18; let by = rect.maxY
-        tailPath.move(to: NSPoint(x: bx,      y: by))
-        tailPath.line(to: NSPoint(x: rect.minX - 6, y: by + 16))
-        tailPath.line(to: NSPoint(x: bx + 14, y: by))
-        tailPath.close()
-        NSColor.white.withAlphaComponent(0.92).setFill()
-        tailPath.fill()
 
-        // Stroke body + tail outline
+        switch tailDirection {
+        case .bottomLeft:
+            // Attaches to bottom edge, near left corner; tip points down-left
+            let ax = rect.minX + inset
+            let ay = rect.maxY
+            tailPath.move(to: NSPoint(x: ax,             y: ay))
+            tailPath.line(to: NSPoint(x: rect.minX - tailLen * 0.35, y: ay + tailLen))
+            tailPath.line(to: NSPoint(x: ax + tailBase,  y: ay))
+
+        case .bottomRight:
+            let ax = rect.maxX - inset
+            let ay = rect.maxY
+            tailPath.move(to: NSPoint(x: ax,             y: ay))
+            tailPath.line(to: NSPoint(x: rect.maxX + tailLen * 0.35, y: ay + tailLen))
+            tailPath.line(to: NSPoint(x: ax - tailBase,  y: ay))
+
+        case .topLeft:
+            let ax = rect.minX + inset
+            let ay = rect.minY
+            tailPath.move(to: NSPoint(x: ax,             y: ay))
+            tailPath.line(to: NSPoint(x: rect.minX - tailLen * 0.35, y: ay - tailLen))
+            tailPath.line(to: NSPoint(x: ax + tailBase,  y: ay))
+
+        case .topRight:
+            let ax = rect.maxX - inset
+            let ay = rect.minY
+            tailPath.move(to: NSPoint(x: ax,             y: ay))
+            tailPath.line(to: NSPoint(x: rect.maxX + tailLen * 0.35, y: ay - tailLen))
+            tailPath.line(to: NSPoint(x: ax - tailBase,  y: ay))
+        }
+        tailPath.close()
+        fill.setFill(); tailPath.fill()
+
+        // ── Stroke body + tail ────────────────────────────────────────────────
         color.setStroke()
         bodyPath.lineWidth = lineWidth; bodyPath.stroke()
+        // Stroke only the two outer tail edges (skip the base segment inside the body)
         let tailStroke = NSBezierPath()
-        tailStroke.move(to: NSPoint(x: bx, y: by))
-        tailStroke.line(to: NSPoint(x: rect.minX - 6, y: by + 16))
-        tailStroke.line(to: NSPoint(x: bx + 14, y: by))
+        switch tailDirection {
+        case .bottomLeft:
+            let ax = rect.minX + inset; let ay = rect.maxY
+            tailStroke.move(to: NSPoint(x: ax, y: ay))
+            tailStroke.line(to: NSPoint(x: rect.minX - tailLen * 0.35, y: ay + tailLen))
+            tailStroke.line(to: NSPoint(x: ax + tailBase, y: ay))
+        case .bottomRight:
+            let ax = rect.maxX - inset; let ay = rect.maxY
+            tailStroke.move(to: NSPoint(x: ax, y: ay))
+            tailStroke.line(to: NSPoint(x: rect.maxX + tailLen * 0.35, y: ay + tailLen))
+            tailStroke.line(to: NSPoint(x: ax - tailBase, y: ay))
+        case .topLeft:
+            let ax = rect.minX + inset; let ay = rect.minY
+            tailStroke.move(to: NSPoint(x: ax, y: ay))
+            tailStroke.line(to: NSPoint(x: rect.minX - tailLen * 0.35, y: ay - tailLen))
+            tailStroke.line(to: NSPoint(x: ax + tailBase, y: ay))
+        case .topRight:
+            let ax = rect.maxX - inset; let ay = rect.minY
+            tailStroke.move(to: NSPoint(x: ax, y: ay))
+            tailStroke.line(to: NSPoint(x: rect.maxX + tailLen * 0.35, y: ay - tailLen))
+            tailStroke.line(to: NSPoint(x: ax - tailBase, y: ay))
+        }
         tailStroke.lineWidth = lineWidth; color.setStroke(); tailStroke.stroke()
 
-        // Text
-        let pad: CGFloat = 8
+        // ── Text ──────────────────────────────────────────────────────────────
+        let pad: CGFloat = 10
         let textRect = rect.insetBy(dx: pad, dy: pad)
         let str = text.isEmpty ? "Type…" : text
         let attrs: [NSAttributedString.Key: Any] = [

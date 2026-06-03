@@ -5,6 +5,29 @@ import Footer from '../components/Footer.astro';
 
 const releases = [
   {
+    version: '0.3.0',
+    date: '2026-06-03',
+    tag: 'alpha',
+    changes: {
+      added: [
+        'Magnifier HUD — pixel color swatch with real-time HEX (#RRGGBB) readout under cursor',
+        'Capture region selector now shows 8 circular handles (corners + edge midpoints)',
+        'Annotation handles upgraded to white circles with blue stroke — hover shows glow ring',
+        'Rotation handle redesigned: white circle + blue stroke, dashed stem line',
+        'Speech balloon tail direction picker — 4 directions (bottom-left / bottom-right / top-left / top-right)',
+        'Spotlight opacity slider in toolbar (was hardcoded 62%)',
+        'Line style picker redrawn as Canvas strokes — solid, dashed, dotted (replaced Unicode glyphs)',
+        'Text annotation fields use dark frosted pill backdrop with white border (accessibility focus ring restored)',
+        'Size label shows pixel dimensions + origin coords in one compact pill',
+      ],
+      fixed: [],
+      changed: [
+        'Rotation handle color: system orange → white/blue (matches resize handle system)',
+        'drawSpotlightOverlay respects vm.spotlightOpacity instead of hardcoded constant',
+      ],
+    },
+  },
+  {
     version: '0.2.0',
     date: '2026-06-03',
     tag: 'alpha',

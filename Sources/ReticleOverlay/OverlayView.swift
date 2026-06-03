@@ -33,6 +33,7 @@ final class OverlayView: NSView {
     private var selectedAnnotations: Set<ObjectIdentifier> = []
     private var moveOrigin: NSPoint?
     private var activeHandle: Int?   // 0-7 = rect handle index, 10-11 = line endpoint index
+    private var hoveredHandle: Int? = nil  // index of handle under cursor (for hover glow)
 
     // Freehand / Polygon region
     /// Saves the window rect that was hovered at mouseDown so mouseUp can use it for single-click capture.
@@ -263,7 +264,7 @@ final class OverlayView: NSView {
         let fullPath = NSBezierPath(rect: bounds)
         for sp in spotlights { fullPath.append(NSBezierPath(ovalIn: sp.rect)) }
         fullPath.windingRule = .evenOdd
-        NSColor.black.withAlphaComponent(0.65).setFill()
+        NSColor.black.withAlphaComponent(viewModel?.spotlightOpacity ?? 0.65).setFill()
         fullPath.fill()
         // Stroke border of each spotlight circle
         for sp in spotlights {
@@ -358,11 +359,24 @@ final class OverlayView: NSView {
     }
 
     private func drawHandles(_ rect: NSRect, ctx: CGContext) {
-        let s: CGFloat = 6
-        ctx.setFillColor(NSColor.white.cgColor)
-        [CGPoint(x: rect.minX, y: rect.minY), CGPoint(x: rect.maxX, y: rect.minY),
-         CGPoint(x: rect.minX, y: rect.maxY), CGPoint(x: rect.maxX, y: rect.maxY)].forEach {
-            ctx.fill(CGRect(x: $0.x - s/2, y: $0.y - s/2, width: s, height: s))
+        let r: CGFloat = 4.5
+        let pts: [CGPoint] = [
+            CGPoint(x: rect.minX, y: rect.minY),  // TL
+            CGPoint(x: rect.midX, y: rect.minY),  // TC
+            CGPoint(x: rect.maxX, y: rect.minY),  // TR
+            CGPoint(x: rect.maxX, y: rect.midY),  // MR
+            CGPoint(x: rect.maxX, y: rect.maxY),  // BR
+            CGPoint(x: rect.midX, y: rect.maxY),  // BC
+            CGPoint(x: rect.minX, y: rect.maxY),  // BL
+            CGPoint(x: rect.minX, y: rect.midY),  // ML
+        ]
+        for pt in pts {
+            let circle = CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)
+            ctx.setFillColor(NSColor.white.cgColor)
+            ctx.fillEllipse(in: circle)
+            ctx.setStrokeColor(NSColor.black.withAlphaComponent(0.45).cgColor)
+            ctx.setLineWidth(0.75)
+            ctx.strokeEllipse(in: circle)
         }
     }
 
@@ -431,16 +445,22 @@ final class OverlayView: NSView {
                 ctx.setLineDash(phase: 0, lengths: [])
             }
 
-            // 8 resize handles (at rotated positions)
-            for hr in handleRects(for: br) {
+            // 8 resize handles — white circles with blue stroke; hover handle glows
+            for (idx, hr) in handleRects(for: br).enumerated() {
                 let rotatedCenter = rotatePoint(NSPoint(x: hr.midX, y: hr.midY), around: c, by: θ)
-                let size: CGFloat = hr.width
-                let rhr = CGRect(x: rotatedCenter.x - size/2, y: rotatedCenter.y - size/2,
-                                 width: size, height: size)
-                ctx.fill(rhr)
+                let r: CGFloat = 5
+                let circle = CGRect(x: rotatedCenter.x - r, y: rotatedCenter.y - r,
+                                    width: r * 2, height: r * 2)
+                // Hover glow ring
+                if hoveredHandle == idx {
+                    ctx.setFillColor(NSColor.systemBlue.withAlphaComponent(0.25).cgColor)
+                    ctx.fillEllipse(in: circle.insetBy(dx: -3, dy: -3))
+                }
+                ctx.setFillColor(NSColor.white.cgColor)
+                ctx.fillEllipse(in: circle)
                 ctx.setStrokeColor(NSColor.systemBlue.cgColor)
-                ctx.stroke(rhr)
-                ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.8).cgColor)
+                ctx.setLineWidth(1.5)
+                ctx.strokeEllipse(in: circle)
             }
 
             // Rotation handle — circle above the top-centre, offset by rotation
@@ -449,14 +469,21 @@ final class OverlayView: NSView {
                 let rh = rotatePoint(topCenter, around: c, by: θ)
                 let stemEnd = rotatePoint(NSPoint(x: br.midX, y: br.minY), around: c, by: θ)
                 // Stem line
-                ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.7).cgColor)
-                ctx.setLineWidth(1)
+                ctx.setStrokeColor(NSColor.white.withAlphaComponent(0.8).cgColor)
+                ctx.setLineWidth(1.5)
+                ctx.setLineDash(phase: 0, lengths: [3, 2])
                 ctx.beginPath(); ctx.move(to: stemEnd); ctx.addLine(to: rh); ctx.strokePath()
-                // Handle circle
-                let hr = CGRect(x: rh.x - 7, y: rh.y - 7, width: 14, height: 14)
-                ctx.setFillColor(NSColor.systemOrange.cgColor)
+                ctx.setLineDash(phase: 0, lengths: [])
+                // Handle circle — white fill + blue stroke, matches resize handles
+                let hr = CGRect(x: rh.x - 6, y: rh.y - 6, width: 12, height: 12)
+                // Hover glow
+                if hoveredHandle == 20 {
+                    ctx.setFillColor(NSColor.systemBlue.withAlphaComponent(0.25).cgColor)
+                    ctx.fillEllipse(in: hr.insetBy(dx: -3, dy: -3))
+                }
+                ctx.setFillColor(NSColor.white.cgColor)
                 ctx.fillEllipse(in: hr)
-                ctx.setStrokeColor(NSColor.white.cgColor)
+                ctx.setStrokeColor(NSColor.systemBlue.cgColor)
                 ctx.setLineWidth(1.5)
                 ctx.strokeEllipse(in: hr)
             }
@@ -551,31 +578,88 @@ final class OverlayView: NSView {
         }
     }
 
+    /// Samples the sRGB value of one pixel from `image` at pixel coordinate (x, y).
+    private func samplePixelColor(from image: CGImage, x: Int, y: Int) -> NSColor? {
+        guard x >= 0, y >= 0, x < image.width, y < image.height else { return nil }
+        var raw = [UInt8](repeating: 0, count: 4)
+        guard let ctx = CGContext(
+            data: &raw, width: 1, height: 1,
+            bitsPerComponent: 8, bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        // Draw the image offset so pixel (x,y) lands at position (0,0) in the 1×1 context.
+        // CGImage y=0=bottom; image.height - y - 1 flips to the visual row.
+        ctx.draw(image, in: CGRect(x: -CGFloat(x),
+                                   y: -CGFloat(image.height - y - 1),
+                                   width: CGFloat(image.width),
+                                   height: CGFloat(image.height)))
+        let r = CGFloat(raw[0]) / 255
+        let g = CGFloat(raw[1]) / 255
+        let b = CGFloat(raw[2]) / 255
+        return NSColor(srgbRed: r, green: g, blue: b, alpha: 1)
+    }
+
     private func drawSizeLabel(_ rect: NSRect, showCoords: Bool = false) {
         let sf = scaleFactor
         let text: String
         if showCoords {
-            text = "X: \(Int(rect.minX * sf))  Y: \(Int(rect.minY * sf))  W: \(Int(rect.width * sf))  H: \(Int(rect.height * sf))"
+            let w = Int(rect.width * sf); let h = Int(rect.height * sf)
+            let x = Int(rect.minX * sf); let y = Int(rect.minY * sf)
+            text = "\(w) × \(h)  (\(x), \(y))"
         } else {
             text = "\(Int(rect.width * sf)) × \(Int(rect.height * sf))"
         }
         let str = NSAttributedString(
             string: text,
-            attributes: [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .medium),
+            attributes: [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .semibold),
                          .foregroundColor: NSColor.white])
-        let sz = str.size(); let pad: CGFloat = 5
-        let lx = max(2, min(rect.midX - sz.width/2 - pad, bounds.width - sz.width - pad*2 - 2))
-        let ly = rect.maxY + 6 > bounds.height - 24 ? rect.minY - sz.height - 10 : rect.maxY + 6
-        let bg = NSBezierPath(roundedRect: NSRect(x: lx, y: ly, width: sz.width+pad*2, height: sz.height+pad),
-                              xRadius: 4, yRadius: 4)
-        NSColor(white: 0, alpha: 0.7).setFill()
-        bg.fill()
-        str.draw(at: NSPoint(x: lx + pad, y: ly + pad/2))
+        let sz = str.size()
+        let hPad: CGFloat = 8; let vPad: CGFloat = 5
+        let labelW = sz.width + hPad * 2
+        let labelH = sz.height + vPad * 2
+        // Smart placement: prefer below selection, flip above when near bottom edge
+        let spaceBelow = bounds.height - rect.maxY
+        let ly: CGFloat = spaceBelow >= labelH + 8 ? rect.maxY + 6 : rect.minY - labelH - 6
+        let lx = max(2, min(rect.midX - labelW / 2, bounds.width - labelW - 2))
+        let bgRect = NSRect(x: lx, y: ly, width: labelW, height: labelH)
+        // Dark frosted pill background
+        let pill = NSBezierPath(roundedRect: bgRect, xRadius: 5, yRadius: 5)
+        NSColor.black.withAlphaComponent(0.72).setFill()
+        pill.fill()
+        // Subtle white border for depth
+        NSColor.white.withAlphaComponent(0.12).setStroke()
+        pill.lineWidth = 0.5; pill.stroke()
+        str.draw(at: NSPoint(x: lx + hPad, y: ly + vPad))
     }
 
     // ShareX-style pixel magnifier with coordinate readout.
     // Crops pixelCount×pixelCount pixels from baseCGImage around the cursor,
     // scales them up with nearest-neighbor, overlays a grid and crosshair.
+    /// Creates a styled annotation text field positioned at `frame`.
+    /// Uses a dark semi-transparent NSBox wrapper so it looks native against the overlay.
+    private func makeAnnotationTextField(frame: NSRect, color: NSColor, font: NSFont,
+                                         placeholder: String) -> NSTextField {
+        let field = NSTextField(frame: frame)
+        field.isBordered = false
+        field.drawsBackground = false
+        field.textColor = color
+        field.font = font
+        field.placeholderString = placeholder
+        // Accessibility: keep default focus ring so keyboard users see focus
+        field.focusRingType = .default
+        // Dark pill backing via a sibling view (NSBox)
+        let box = NSBox(frame: frame.insetBy(dx: -4, dy: -4))
+        box.boxType = .custom
+        box.cornerRadius = 6
+        box.borderWidth = 0.5
+        box.borderColor = NSColor.white.withAlphaComponent(0.18)
+        box.fillColor = NSColor.black.withAlphaComponent(0.68)
+        addSubview(box)
+        addSubview(field)
+        return field
+    }
+
     private func drawMagnifier(at pos: NSPoint, in ctx: CGContext) {
         let pixelCount = 11          // source pixels per side (must be odd)
         let zoom: CGFloat = 8        // each source pixel → zoom×zoom points
@@ -657,20 +741,56 @@ final class OverlayView: NSView {
         ctx.stroke(magRect)
         ctx.restoreGState()
 
-        // ── Coordinate label below magnifier ───────────────────────────────
+        // ── HUD below magnifier — coordinate + HEX color swatch ───────────
+        // Sample center pixel color from the 11×11 crop (center = half, half in image coords)
+        let pixelColor: NSColor = samplePixelColor(
+            from: cropped, x: Int(cx) - Int(srcRect.minX), y: Int(cy) - Int(srcRect.minY)
+        ) ?? .gray
+        // Build HEX string
+        var rC: CGFloat = 0, gC: CGFloat = 0, bC: CGFloat = 0
+        pixelColor.usingColorSpace(.sRGB)?.getRed(&rC, green: &gC, blue: &bC, alpha: nil)
+        let hex = String(format: "#%02X%02X%02X",
+                         Int(rC * 255), Int(gC * 255), Int(bC * 255))
         let screenX = Int(pos.x * scaleFactor)
         let screenY = Int(pos.y * scaleFactor)
-        let coordStr = NSAttributedString(
-            string: "X: \(screenX)  Y: \(screenY)",
-            attributes: [.font: NSFont.monospacedSystemFont(ofSize: 10, weight: .regular),
-                         .foregroundColor: NSColor.white])
-        let csz = coordStr.size(); let cpad: CGFloat = 4
-        let lbX = mx + (magW - csz.width) / 2 - cpad
-        let lbY = my + magH + 3
-        let lbBg = NSRect(x: lbX, y: lbY, width: csz.width + cpad * 2, height: csz.height + cpad)
-        NSColor(white: 0, alpha: 0.72).setFill()
-        NSBezierPath(roundedRect: lbBg, xRadius: 3, yRadius: 3).fill()
-        coordStr.draw(at: NSPoint(x: lbX + cpad, y: lbY + cpad / 2))
+
+        let font = NSFont.monospacedSystemFont(ofSize: 10, weight: .medium)
+        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.white]
+        let coordStr = NSAttributedString(string: "X:\(screenX) Y:\(screenY)", attributes: attrs)
+        let hexStr   = NSAttributedString(string: hex, attributes: attrs)
+
+        let cpad: CGFloat = 5; let vpad: CGFloat = 4
+        let swatchSize: CGFloat = 12  // color square
+        let swatchGap: CGFloat = 5
+        let lineH = max(coordStr.size().height, swatchSize) + vpad * 2
+        let row1W = coordStr.size().width + cpad * 2
+        let row2W = swatchSize + swatchGap + hexStr.size().width + cpad * 2
+        let hudW = max(magW, max(row1W, row2W))
+        let hudH = lineH * 2 + 2
+        let hudX = mx
+        let hudY = my + magH + 3
+
+        // Background pill
+        let hudRect = NSRect(x: hudX, y: hudY, width: hudW, height: hudH)
+        NSColor.black.withAlphaComponent(0.78).setFill()
+        NSBezierPath(roundedRect: hudRect, xRadius: 4, yRadius: 4).fill()
+        NSColor.white.withAlphaComponent(0.1).setStroke()
+        let pill = NSBezierPath(roundedRect: hudRect, xRadius: 4, yRadius: 4)
+        pill.lineWidth = 0.5; pill.stroke()
+
+        // Row 1 — coordinates
+        let r1Y = hudY + lineH + (lineH - coordStr.size().height) / 2
+        coordStr.draw(at: NSPoint(x: hudX + cpad, y: r1Y))
+
+        // Row 2 — color swatch + HEX
+        let r2Y = hudY + (lineH - swatchSize) / 2
+        let swatchRect = NSRect(x: hudX + cpad, y: r2Y, width: swatchSize, height: swatchSize)
+        pixelColor.setFill()
+        NSBezierPath(roundedRect: swatchRect, xRadius: 2, yRadius: 2).fill()
+        NSColor.white.withAlphaComponent(0.4).setStroke()
+        let swatchPath = NSBezierPath(roundedRect: swatchRect, xRadius: 2, yRadius: 2)
+        swatchPath.lineWidth = 0.5; swatchPath.stroke()
+        hexStr.draw(at: NSPoint(x: hudX + cpad + swatchSize + swatchGap, y: hudY + (lineH - hexStr.size().height) / 2))
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -804,7 +924,8 @@ final class OverlayView: NSView {
             inProgressAnnotation = BlackoutAnnotation(rect: .init(origin: pt, size: .zero))
         case .speechBalloon:
             inProgressAnnotation = SpeechBalloonAnnotation(
-                rect: .init(origin: pt, size: .zero), color: vm.strokeColor, fontSize: vm.fontSize)
+                rect: .init(origin: pt, size: .zero), color: vm.strokeColor,
+                fontSize: vm.fontSize, tailDirection: vm.balloonTailDirection)
         case .spotlight:
             inProgressAnnotation = SpotlightAnnotation(
                 rect: .init(origin: pt, size: .zero), color: vm.strokeColor, lineWidth: vm.lineWidth)
@@ -915,7 +1036,8 @@ final class OverlayView: NSView {
             if let s = dragStart { inProgressAnnotation = BlackoutAnnotation(rect: makeRect(s, cur)) }
         case .speechBalloon:
             if let s = dragStart { inProgressAnnotation = SpeechBalloonAnnotation(
-                rect: makeRect(s, cur), color: vm.strokeColor, fontSize: vm.fontSize) }
+                rect: makeRect(s, cur), color: vm.strokeColor,
+                fontSize: vm.fontSize, tailDirection: vm.balloonTailDirection) }
         case .spotlight:
             if let s = dragStart { inProgressAnnotation = SpotlightAnnotation(
                 rect: makeRect(s, cur), color: vm.strokeColor, lineWidth: vm.lineWidth) }
@@ -992,7 +1114,33 @@ final class OverlayView: NSView {
     override func mouseMoved(with event: NSEvent) {
         mousePos = convert(event.locationInWindow, from: nil)
         if viewModel?.activeTool == .region { updateHoveredWindow() }
+        updateHoveredHandle(at: mousePos)
         needsDisplay = true
+    }
+
+    /// Updates `hoveredHandle` based on cursor proximity to the selected annotation's handles.
+    private func updateHoveredHandle(at pt: NSPoint) {
+        guard let vm = viewModel, vm.activeTool == .select,
+              let sel = selectedAnnotation,
+              let br = annotationBoundingRect(sel) else {
+            if hoveredHandle != nil { hoveredHandle = nil }
+            return
+        }
+        let c = sel.rotationCenter; let θ = sel.rotation
+        // Check rotation handle first
+        if sel.isRotatable {
+            let rotHandleCenter = rotatePoint(NSPoint(x: br.midX, y: br.minY - 28), around: c, by: θ)
+            if hypot(pt.x - rotHandleCenter.x, pt.y - rotHandleCenter.y) < 10 {
+                if hoveredHandle != 20 { hoveredHandle = 20; needsDisplay = true }
+                return
+            }
+        }
+        // Check resize handles
+        let localPt = unrotatePoint(pt, around: c, by: θ)
+        let newHover = handleRects(for: br).firstIndex(where: {
+            $0.insetBy(dx: -3, dy: -3).contains(localPt)
+        })
+        if newHover != hoveredHandle { hoveredHandle = newHover; needsDisplay = true }
     }
 
     override func rightMouseDown(with event: NSEvent) { delegate?.overlayViewDidCancel(self) }
@@ -1028,12 +1176,12 @@ final class OverlayView: NSView {
 
     private func beginTextInput(at pt: NSPoint, vm: OverlayViewModel) {
         guard editingTextField == nil else { return }
-        let field = NSTextField(frame: NSRect(x: pt.x, y: pt.y, width: 200, height: 32))
-        field.isBordered = true; field.backgroundColor = NSColor(white:0,alpha:0.5)
-        field.textColor = vm.strokeColor
-        field.font = NSFont.systemFont(ofSize: vm.fontSize, weight: .semibold)
-        field.placeholderString = "Type…"; field.focusRingType = .none
-        addSubview(field); editingTextField = field; window?.makeFirstResponder(field)
+        let field = makeAnnotationTextField(
+            frame: NSRect(x: pt.x, y: pt.y, width: 200, height: vm.fontSize + 14),
+            color: vm.strokeColor,
+            font: NSFont.systemFont(ofSize: vm.fontSize, weight: .semibold),
+            placeholder: "Type…")
+        editingTextField = field; window?.makeFirstResponder(field)
         editingObserver = NotificationCenter.default.addObserver(
             forName: NSControl.textDidEndEditingNotification, object: field, queue: .main
         ) { [weak self, weak field] _ in
@@ -1052,12 +1200,12 @@ final class OverlayView: NSView {
 
     private func beginTextOutlineInput(at pt: NSPoint, vm: OverlayViewModel) {
         guard editingTextField == nil else { return }
-        let field = NSTextField(frame: NSRect(x: pt.x, y: pt.y, width: 200, height: 32))
-        field.isBordered = true; field.backgroundColor = NSColor(white: 0, alpha: 0.5)
-        field.textColor = vm.strokeColor
-        field.font = NSFont.systemFont(ofSize: vm.fontSize, weight: .semibold)
-        field.placeholderString = "Outlined text…"; field.focusRingType = .none
-        addSubview(field); editingTextField = field; window?.makeFirstResponder(field)
+        let field = makeAnnotationTextField(
+            frame: NSRect(x: pt.x, y: pt.y, width: 200, height: vm.fontSize + 14),
+            color: vm.strokeColor,
+            font: NSFont.systemFont(ofSize: vm.fontSize, weight: .semibold),
+            placeholder: "Outlined text…")
+        editingTextField = field; window?.makeFirstResponder(field)
         editingObserver = NotificationCenter.default.addObserver(
             forName: NSControl.textDidEndEditingNotification, object: field, queue: .main
         ) { [weak self, weak field] _ in
@@ -1075,12 +1223,12 @@ final class OverlayView: NSView {
 
     private func beginTextBackgroundInput(at pt: NSPoint, vm: OverlayViewModel) {
         guard editingTextField == nil else { return }
-        let field = NSTextField(frame: NSRect(x: pt.x, y: pt.y, width: 200, height: 32))
-        field.isBordered = true; field.backgroundColor = NSColor(white: 0, alpha: 0.5)
-        field.textColor = vm.strokeColor
-        field.font = NSFont.systemFont(ofSize: vm.fontSize, weight: .semibold)
-        field.placeholderString = "Background text…"; field.focusRingType = .none
-        addSubview(field); editingTextField = field; window?.makeFirstResponder(field)
+        let field = makeAnnotationTextField(
+            frame: NSRect(x: pt.x, y: pt.y, width: 200, height: vm.fontSize + 14),
+            color: vm.strokeColor,
+            font: NSFont.systemFont(ofSize: vm.fontSize, weight: .semibold),
+            placeholder: "Background text…")
+        editingTextField = field; window?.makeFirstResponder(field)
         editingObserver = NotificationCenter.default.addObserver(
             forName: NSControl.textDidEndEditingNotification, object: field, queue: .main
         ) { [weak self, weak field] _ in
@@ -1107,7 +1255,8 @@ final class OverlayView: NSView {
         field.isBordered = false; field.drawsBackground = false
         field.textColor = balloon.color
         field.font = NSFont.systemFont(ofSize: balloon.fontSize, weight: .regular)
-        field.placeholderString = "Type…"; field.focusRingType = .none
+        field.placeholderString = "Type…"
+        field.focusRingType = .default
         addSubview(field); editingTextField = field; window?.makeFirstResponder(field)
         editingObserver = NotificationCenter.default.addObserver(
             forName: NSControl.textDidEndEditingNotification, object: field, queue: .main
@@ -1173,14 +1322,17 @@ final class OverlayView: NSView {
     private func beginEmojiInput(at pt: NSPoint, vm: OverlayViewModel) {
         guard editingTextField == nil else { return }
         let field = NSTextField(frame: NSRect(x: pt.x, y: pt.y, width: 80, height: CGFloat(vm.emojiSize) + 16))
-        field.isBordered = true
-        field.backgroundColor = NSColor(white: 0, alpha: 0.5)
+        field.isBordered = false; field.drawsBackground = false
         field.textColor = .white
         field.font = NSFont.systemFont(ofSize: vm.emojiSize)
         field.placeholderString = "🙂"
-        field.focusRingType = .none
+        field.focusRingType = .default
         field.alignment = .center
-        addSubview(field); editingTextField = field; window?.makeFirstResponder(field)
+        let box = NSBox(frame: field.frame.insetBy(dx: -4, dy: -4))
+        box.boxType = .custom; box.cornerRadius = 8; box.borderWidth = 0.5
+        box.borderColor = NSColor.white.withAlphaComponent(0.18)
+        box.fillColor = NSColor.black.withAlphaComponent(0.68)
+        addSubview(box); addSubview(field); editingTextField = field; window?.makeFirstResponder(field)
         editingObserver = NotificationCenter.default.addObserver(
             forName: NSControl.textDidEndEditingNotification, object: field, queue: .main
         ) { [weak self, weak field] _ in
