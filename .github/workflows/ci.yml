@@ -204,10 +204,10 @@ jobs:
       # ── Update Homebrew Cask ──────────────────────────────────────────────
       # Requires a PAT with repo scope stored as HOMEBREW_TOKEN secret.
       - name: Update Homebrew Cask
-        if: ${{ secrets.HOMEBREW_TOKEN != '' }}
         env:
           HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
         run: |
+          [ -z "$HOMEBREW_TOKEN" ] && echo "HOMEBREW_TOKEN not set — skipping cask update" && exit 0
           SHA=$(cat build/Reticle.sha256)
           VERSION="${{ env.VERSION }}"
           git clone "https://x-access-token:${HOMEBREW_TOKEN}@github.com/croc100/homebrew-reticle.git" /tmp/homebrew-reticle
