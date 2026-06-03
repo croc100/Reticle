@@ -186,9 +186,13 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp site/public/appcast.xml /tmp/appcast_updated.xml
+          git fetch origin main
+          git checkout -B main origin/main
+          cp /tmp/appcast_updated.xml site/public/appcast.xml
           git add site/public/appcast.xml
           git diff --cached --quiet || git commit -m "appcast: add v${{ env.VERSION }}"
-          git push origin HEAD:main
+          git push origin main
 
       # ── Upload to GitHub Release ──────────────────────────────────────────
       - name: Upload DMG to release
