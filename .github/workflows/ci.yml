@@ -155,7 +155,7 @@ jobs:
           echo "ED_SIG: $ED_SIG"
 
           # Prepend new <item> to the appcast channel
-          BUILD=$(grep -m1 CFBundleVersion App/Info.plist | grep -oE '[0-9]+')
+          BUILD=$(grep -A1 CFBundleVersion App/Info.plist | grep -oE '[0-9]+')
           python3 - "$VERSION" "$PUB_DATE" "$DMG_URL" "$ED_SIG" "$DMG_SIZE" "$BUILD" <<'PYEOF'
           import re, pathlib, sys
           ver, pub_date, dmg_url, ed_sig, dmg_size, build = sys.argv[1:]
