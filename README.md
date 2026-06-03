@@ -33,9 +33,6 @@ Reticle is a **macOS-native screenshot tool** that brings the full power of [Sha
 
 Most macOS screenshot tools are either too simple (built-in Screenshot.app) or too expensive (CleanShot X at $29). Reticle is **completely free and open source**, with a ShareX-style annotation toolbar, workflow automation, and cloud upload built in from day one.
 
-> **Pricing:** Free for everyone. Yes, everyone. Well — *almost* everyone.  
-> **기엽이는 유료입니다.** 기엽아, 이거 쓰려면 커피 한 잔 사와. ☕
-
 ---
 
 ## Features
@@ -126,6 +123,8 @@ Each tool is **sticky** — stays active until you switch to another.
 | OCR result panel | ✅ |
 | Workflow profiles (hotkey → capture mode → upload) | ✅ |
 | Customizable global hotkeys | ✅ |
+| Launch at login (SMAppService) | ✅ |
+| SFTP / S3 Test Connection | ✅ |
 
 ---
 
@@ -173,11 +172,12 @@ ShareX is the undisputed best screenshot tool — on Windows. Reticle aims for *
 
 ## Coming Soon
 
-- **QR code** generate / scan
+- **Notarized DMG** — no more `xattr` bypass on first launch
+- **Sparkle auto-update** — in-app update notifications
+- **QR code** — generate / scan from captured image
 - **Static Mask** — register regions once, auto-redact on every capture
 - **Vision PII detection** — auto-detect emails, phone numbers, API keys, JWTs
-- **Watch folder** — auto-process on save
-- Notarized DMG + Sparkle auto-update
+- **Homebrew Cask** — `brew install --cask reticle`
 
 ---
 
@@ -200,9 +200,14 @@ brew install --cask reticle
 > xattr -dr com.apple.quarantine /Applications/Reticle.app
 > ```
 
-### Download DMG
+### Download DMG (recommended)
 
 Grab the latest `Reticle-x.x.x.dmg` from [Releases](https://github.com/croc100/Reticle/releases).
+
+> **First launch (not yet notarized):** Right-click → **Open**, or run once:
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/Reticle.app
+> ```
 
 ### Build from source
 
@@ -259,14 +264,18 @@ ReticleApp          — Menu bar app, hotkey wiring, capture coordinator
 
 ---
 
+## Sponsoring
+
+Reticle is free forever. If it saves you time, consider [sponsoring](https://croc100.github.io/Reticle/sponsor/) — it helps fund the Apple Developer ID needed for notarized releases.
+
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
+Contributions are welcome! Open an issue or PR on GitHub.
 
-For bug reports and feature requests, use the [issue templates](.github/ISSUE_TEMPLATE/).
+For bug reports and feature requests, use the [issue tracker](https://github.com/croc100/Reticle/issues).
 
 ## License
 
 [Apache License 2.0](LICENSE) — free to use, modify, and distribute, including commercially.
 
-© 2024 Reticle Contributors
+© 2026 Reticle Contributors

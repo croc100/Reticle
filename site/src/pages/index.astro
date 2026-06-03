@@ -93,8 +93,8 @@ const compare = [
 
     <div class="relative max-w-3xl mx-auto">
       <div class="inline-flex items-center gap-2 bg-surface-raised border border-surface-border rounded-full px-3 py-1 text-xs text-text-secondary mb-8">
-        <span class="w-1.5 h-1.5 rounded-full bg-accent inline-block"></span>
-        Alpha — build from source
+        <span class="w-1.5 h-1.5 rounded-full bg-accent inline-block animate-pulse"></span>
+        v0.4.0 alpha — DMG available
       </div>
 
       <h1 class="text-5xl sm:text-6xl font-bold tracking-tight leading-tight mb-6">
@@ -126,9 +126,7 @@ const compare = [
       </div>
 
       <p class="mt-5 text-xs text-text-secondary">
-        macOS 13+ · Apple Silicon & Intel · Free forever
-        <span class="mx-2 opacity-30">|</span>
-        <span class="opacity-50">기엽이는 유료입니다 ☕</span>
+        macOS 13+ · Apple Silicon &amp; Intel · Free forever · Apache 2.0
       </p>
     </div>
   </section>
@@ -257,14 +255,15 @@ const compare = [
   <!-- Coming soon -->
   <section class="py-16 px-6 bg-surface-raised border-y border-surface-border">
     <div class="max-w-5xl mx-auto">
-      <h2 class="text-2xl font-bold mb-8">Coming Soon</h2>
+      <h2 class="text-2xl font-bold mb-2">Coming Soon</h2>
+      <p class="text-text-secondary text-sm mb-8">Reticle is actively developed. Here's what's next.</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
-          ['Screen recording', 'GIF & MP4'],
-          ['QR code', 'Generate & scan'],
-          ['Static Mask', 'Register regions once, auto-redact every capture'],
+          ['QR code', 'Generate & scan from captured image'],
+          ['Static Mask', 'Register regions once, auto-redact on every capture'],
           ['Vision PII detection', 'Auto-detect emails, phone numbers, API keys, JWTs'],
-          ['Watch folder', 'Auto-process on save'],
+          ['Notarized DMG', 'No more xattr bypass — drag-and-drop install'],
+          ['Sparkle auto-update', 'In-app update notifications'],
           ['Homebrew Cask', 'brew install --cask reticle'],
         ].map(([title, desc]) => (
           <div class="flex gap-3 p-4 rounded-xl border border-dashed border-surface-border">
@@ -282,16 +281,42 @@ const compare = [
   <!-- Install CTA -->
   <section class="py-24 px-6 text-center">
     <div class="max-w-2xl mx-auto">
-      <h2 class="text-3xl font-bold mb-4">Get started</h2>
-      <p class="text-text-secondary mb-4">
-        Signed DMG and Homebrew coming with v1.0. Build from source until then.
+      <h2 class="text-3xl font-bold mb-4">Get Reticle</h2>
+      <p class="text-text-secondary mb-10 leading-relaxed">
+        Free forever. No account required. Download the DMG and drag to Applications.
       </p>
-      <pre class="bg-surface-raised border border-surface-border rounded-xl px-6 py-4 text-sm font-mono text-left inline-block text-text-secondary mb-8 overflow-x-auto max-w-full"><code><span class="text-text-secondary opacity-50">$</span> <span class="text-text-primary">git clone https://github.com/croc100/Reticle.git</span>
-<span class="text-text-secondary opacity-50">$</span> <span class="text-text-primary">cd Reticle && swift build -c release</span></code></pre>
-      <p class="text-xs text-text-secondary">
-        Grant <strong class="text-text-primary">Screen Recording</strong> permission on first launch.<br />
-        Grant <strong class="text-text-primary">Accessibility</strong> permission for scroll capture and hotkey recording.
-      </p>
+
+      <!-- Primary: Download DMG -->
+      <div class="mb-6">
+        <a
+          href="https://github.com/croc100/Reticle/releases/latest"
+          class="inline-flex items-center gap-2 bg-accent hover:bg-accent-dim transition-colors text-white font-semibold px-8 py-3.5 rounded-lg text-base"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Download DMG (latest)
+        </a>
+        <p class="text-xs text-text-secondary mt-3">
+          macOS 13 Ventura or later · Apple Silicon &amp; Intel
+        </p>
+      </div>
+
+      <!-- First-launch quarantine note -->
+      <div class="bg-surface-raised border border-surface-border rounded-xl px-6 py-4 text-sm text-left inline-block mb-8 max-w-lg text-text-secondary">
+        <p class="font-medium text-text-primary mb-1">First launch (not yet notarized)</p>
+        <p class="mb-2">Right-click → <strong class="text-text-primary">Open</strong>, or run once in Terminal:</p>
+        <pre class="font-mono text-xs bg-surface rounded-lg px-3 py-2 overflow-x-auto"><code>xattr -dr com.apple.quarantine /Applications/Reticle.app</code></pre>
+      </div>
+
+      <!-- Secondary: Build from source -->
+      <details class="text-left max-w-lg mx-auto">
+        <summary class="text-sm text-text-secondary cursor-pointer hover:text-text-primary transition-colors mb-3 select-none">
+          Build from source
+        </summary>
+        <pre class="bg-surface-raised border border-surface-border rounded-xl px-6 py-4 text-sm font-mono text-text-secondary overflow-x-auto"><code><span class="opacity-50">$</span> <span class="text-text-primary">git clone https://github.com/croc100/Reticle.git</span>
+<span class="opacity-50">$</span> <span class="text-text-primary">cd Reticle && swift build -c release</span></code></pre>
+      </details>
     </div>
   </section>
 
