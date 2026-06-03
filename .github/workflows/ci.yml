@@ -136,15 +136,23 @@ jobs:
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
+          set -x
           DMG_PATH="build/${{ env.DMG_NAME }}"
           DMG_SIZE=$(stat -f%z "$DMG_PATH")
           DMG_URL="https://github.com/croc100/Reticle/releases/download/${{ github.ref_name }}/${{ env.DMG_NAME }}"
           PUB_DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
 
-          # Sign the DMG — private key fed via stdin from Actions secret
-          ED_SIG=$(echo "$SPARKLE_PRIVATE_KEY" \
-            | /tmp/sparkle_tools/bin/sign_update --ed-key-file - "$DMG_PATH" \
-            | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
+          # Write private key to temp file (sign_update may not support stdin on all versions)
+          KEY_FILE=$(mktemp)
+          echo "$SPARKLE_PRIVATE_KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+
+          # Sign the DMG
+          SIGN_OUT=$(/tmp/sparkle_tools/bin/sign_update --ed-key-file "$KEY_FILE" "$DMG_PATH" 2>&1)
+          rm -f "$KEY_FILE"
+          echo "sign_update output: $SIGN_OUT"
+          ED_SIG=$(echo "$SIGN_OUT" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
+          echo "ED_SIG: $ED_SIG"
 
           # Prepend new <item> to the appcast channel
           BUILD=$(grep -m1 CFBundleVersion App/Info.plist | grep -oE '[0-9]+')
