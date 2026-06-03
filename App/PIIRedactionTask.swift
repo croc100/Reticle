@@ -22,15 +22,10 @@ struct PIIRedactionTask: AfterCaptureTask {
 
         // 2. Flip y to screen/view space (y=0=top) for MaskRenderer
         let imgH = CGFloat(image.height)
-        let flipped: [MaskRegion] = rawRegions.map { region in
-            let r = region.rect
-            let flippedRect = CGRect(
-                x: r.minX,
-                y: imgH - r.maxY,
-                width: r.width,
-                height: r.height
-            )
-            return MaskRegion(rect: flippedRect, style: region.style)
+        let flipped: [MaskRegion] = rawRegions.compactMap { region in
+            guard case .rect(let r) = region.rule else { return nil }
+            let flippedRect = CGRect(x: r.minX, y: imgH - r.maxY, width: r.width, height: r.height)
+            return MaskRegion(rule: .rect(flippedRect), style: region.style)
         }
 
         // 3. Apply blur to each detected region

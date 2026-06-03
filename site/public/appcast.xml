@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Reticle</title>
+    <link>https://croc100.github.io/Reticle/appcast.xml</link>
+    <description>Reticle release feed</description>
+    <language>en</language>
+
+    <item>
+      <title>Reticle 0.4.0</title>
+      <pubDate>Tue, 03 Jun 2026 00:00:00 +0000</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>0.4.0</sparkle:shortVersionString>
+      <sparkle:releaseNotesLink>https://croc100.github.io/Reticle/changelog/</sparkle:releaseNotesLink>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/croc100/Reticle/releases/download/v0.4.0/Reticle-0.4.0.dmg"
+        sparkle:edSignature="PLACEHOLDER_SIGN_AFTER_DMG_BUILT"
+        length="0"
+        type="application/octet-stream"
+      />
+    </item>
+
+  </channel>
+</rss>

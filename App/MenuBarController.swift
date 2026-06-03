@@ -1,4 +1,5 @@
 import SwiftUI
+import Sparkle
 import Defaults
 import HotKey
 import ReticleCore
@@ -8,6 +9,7 @@ import ReticleRecorder
 struct MenuBarMenuView: View {
     @EnvironmentObject var coordinator: CaptureCoordinator
     @EnvironmentObject var recorderController: ScreenRecorderController
+    let updater: SPUUpdater
     @Default(.savedRegions)    var savedRegions
     @Default(.lastCaptureRect) var lastCaptureRect
     @Default(.workflowProfiles) var workflowProfiles
@@ -106,6 +108,9 @@ struct MenuBarMenuView: View {
             }
         }
         .keyboardShortcut(",", modifiers: .command)
+
+        Button("Check for Updates…") { updater.checkForUpdates() }
+            .disabled(!updater.canCheckForUpdates)
 
         Divider()
 

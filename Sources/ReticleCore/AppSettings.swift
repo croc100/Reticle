@@ -192,6 +192,11 @@ public extension Defaults.Keys {
     static let autoCaptureEnabled  = Key<Bool>("autoCaptureEnabled",  default: false)
     static let autoCaptureInterval = Key<Int>("autoCaptureInterval",   default: 5)
     static let autoCaptureMode     = Key<AutoCaptureMode>("autoCaptureMode", default: .activeScreen)
+
+    // MARK: Static Mask
+
+    /// Rules applied to every capture automatically before the output pipeline runs.
+    static let staticMasks = Key<[MaskRegion]>("staticMasks", default: [])
 }
 
 // MARK: - Auto Capture Mode

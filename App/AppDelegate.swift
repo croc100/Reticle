@@ -1,8 +1,12 @@
 import AppKit
+import Sparkle
 import ReticleCapture
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+
+    let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Dock 아이콘 숨김 — 메뉴바 전용 앱

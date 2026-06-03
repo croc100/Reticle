@@ -37,7 +37,7 @@ struct ReticleApp: App {
         // MenuBarExtra keeps the app alive and puts the icon in the menu bar.
         // Without this scene a Settings-only app terminates immediately.
         MenuBarExtra {
-            MenuBarMenuView()
+            MenuBarMenuView(updater: appDelegate.updaterController.updater)
                 .environmentObject(coordinator)
                 .environmentObject(recorderController)
         } label: {

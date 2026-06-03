@@ -21,6 +21,8 @@ struct SettingsView: View {
                 .tabItem { Label("Pipeline",  systemImage: "arrow.trianglehead.2.clockwise") }
             RegionsTab()
                 .tabItem { Label("Regions",   systemImage: "rectangle.dashed") }
+            StaticMaskTab()
+                .tabItem { Label("Masks",     systemImage: "eye.slash") }
             WorkflowsTab()
                 .tabItem { Label("Workflows", systemImage: "flowchart") }
         }
@@ -818,6 +820,292 @@ private struct HotkeyRecorderView: NSViewRepresentable {
             super.viewDidMoveToWindow()
             if window == nil { stopMonitor() }
         }
+    }
+}
+
+// MARK: - Static Mask Tab
+
+private struct StaticMaskTab: View {
+    @Default(.staticMasks) var masks
+    @State private var showAddSheet = false
+    @State private var editingMask: MaskRegion? = nil
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Toolbar
+            HStack {
+                Text("Applied automatically to every capture.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button("+ Add Rule") { showAddSheet = true }
+            }
+            .padding(10)
+
+            Divider()
+
+            if masks.isEmpty {
+                Spacer()
+                VStack(spacing: 8) {
+                    Image(systemName: "eye.slash").font(.largeTitle).foregroundStyle(.secondary)
+                    Text("No mask rules").foregroundStyle(.secondary)
+                    Text("Add a rule to automatically blur or hide areas in every screenshot.")
+                        .font(.caption).foregroundStyle(.tertiary).multilineTextAlignment(.center)
+                }
+                .padding()
+                Spacer()
+            } else {
+                List {
+                    ForEach($masks) { $mask in
+                        MaskRuleRow(mask: $mask) { editingMask = mask }
+                    }
+                    .onDelete { masks.remove(atOffsets: $0) }
+                }
+                .listStyle(.plain)
+            }
+        }
+        .sheet(isPresented: $showAddSheet) {
+            MaskRuleEditor(mask: nil) { newMask in
+                masks.append(newMask)
+                showAddSheet = false
+            }
+        }
+        .sheet(item: $editingMask) { mask in
+            MaskRuleEditor(mask: mask) { updated in
+                if let idx = masks.firstIndex(where: { $0.id == updated.id }) {
+                    masks[idx] = updated
+                }
+                editingMask = nil
+            }
+        }
+    }
+}
+
+private struct MaskRuleRow: View {
+    @Binding var mask: MaskRegion
+    let onEdit: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Toggle("", isOn: $mask.enabled).labelsHidden()
+            VStack(alignment: .leading, spacing: 2) {
+                Text(mask.name.isEmpty ? ruleDescription : mask.name)
+                    .font(.callout)
+                    .foregroundStyle(mask.enabled ? .primary : .secondary)
+                Text(ruleDescription)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Text(styleLabel).font(.caption2)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(Color.secondary.opacity(0.12), in: Capsule())
+                .foregroundStyle(.secondary)
+            Button("Edit") { onEdit() }.font(.caption)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var ruleDescription: String {
+        switch mask.rule {
+        case .rect(let r):
+            return "Region \(Int(r.origin.x)),\(Int(r.origin.y))  \(Int(r.width))×\(Int(r.height))"
+        case .appBundle(let id):
+            return "App: \(id)"
+        case .windowTitle(let s):
+            return "Window contains \"\(s)\""
+        }
+    }
+
+    private var styleLabel: String {
+        switch mask.style {
+        case .blur:       return "Blur"
+        case .pixelate:   return "Pixelate"
+        case .solidFill:  return "Fill"
+        }
+    }
+}
+
+private struct MaskRuleEditor: View {
+    let mask: MaskRegion?
+    let onSave: (MaskRegion) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    private enum RuleType: String, CaseIterable {
+        case rect       = "Fixed Region"
+        case appBundle  = "App (bundle ID)"
+        case windowTitle = "Window Title"
+    }
+    private enum StyleType: String, CaseIterable {
+        case blur = "Blur"
+        case pixelate = "Pixelate"
+        case blackout = "Black Fill"
+    }
+
+    @State private var name: String
+    @State private var ruleType: RuleType
+    @State private var styleType: StyleType
+
+    @State private var rectX: String
+    @State private var rectY: String
+    @State private var rectW: String
+    @State private var rectH: String
+    @State private var bundleID: String
+    @State private var windowTitleContains: String
+    @State private var blurRadius: Double
+    @State private var pixelateSize: Double
+
+    init(mask: MaskRegion?, onSave: @escaping (MaskRegion) -> Void) {
+        self.mask = mask
+        self.onSave = onSave
+
+        let m = mask
+        _name = State(initialValue: m?.name ?? "")
+        switch m?.rule {
+        case .rect(let r):
+            _ruleType = State(initialValue: .rect)
+            _rectX = State(initialValue: String(Int(r.minX)))
+            _rectY = State(initialValue: String(Int(r.minY)))
+            _rectW = State(initialValue: String(Int(r.width)))
+            _rectH = State(initialValue: String(Int(r.height)))
+            _bundleID = State(initialValue: "")
+            _windowTitleContains = State(initialValue: "")
+        case .appBundle(let id):
+            _ruleType = State(initialValue: .appBundle)
+            _rectX = State(initialValue: "0"); _rectY = State(initialValue: "0")
+            _rectW = State(initialValue: "400"); _rectH = State(initialValue: "300")
+            _bundleID = State(initialValue: id)
+            _windowTitleContains = State(initialValue: "")
+        case .windowTitle(let s):
+            _ruleType = State(initialValue: .windowTitle)
+            _rectX = State(initialValue: "0"); _rectY = State(initialValue: "0")
+            _rectW = State(initialValue: "400"); _rectH = State(initialValue: "300")
+            _bundleID = State(initialValue: "")
+            _windowTitleContains = State(initialValue: s)
+        case nil:
+            _ruleType = State(initialValue: .rect)
+            _rectX = State(initialValue: "0"); _rectY = State(initialValue: "0")
+            _rectW = State(initialValue: "400"); _rectH = State(initialValue: "300")
+            _bundleID = State(initialValue: ""); _windowTitleContains = State(initialValue: "")
+        }
+        switch m?.style {
+        case .blur(let r):    _styleType = State(initialValue: .blur);     _blurRadius = State(initialValue: r); _pixelateSize = State(initialValue: 12)
+        case .pixelate(let s): _styleType = State(initialValue: .pixelate); _blurRadius = State(initialValue: 20); _pixelateSize = State(initialValue: s)
+        case .solidFill:      _styleType = State(initialValue: .blackout); _blurRadius = State(initialValue: 20); _pixelateSize = State(initialValue: 12)
+        case nil:             _styleType = State(initialValue: .blur);     _blurRadius = State(initialValue: 20); _pixelateSize = State(initialValue: 12)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(mask == nil ? "Add Mask Rule" : "Edit Mask Rule")
+                .font(.title3).bold().padding()
+
+            Divider()
+
+            Form {
+                Section("Name") {
+                    TextField("Optional label", text: $name)
+                }
+
+                Section("Match") {
+                    Picker("Type", selection: $ruleType) {
+                        ForEach(RuleType.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    switch ruleType {
+                    case .rect:
+                        HStack(spacing: 8) {
+                            Group {
+                                LabeledContent("X") { TextField("0", text: $rectX).frame(width: 60) }
+                                LabeledContent("Y") { TextField("0", text: $rectY).frame(width: 60) }
+                                LabeledContent("W") { TextField("400", text: $rectW).frame(width: 60) }
+                                LabeledContent("H") { TextField("300", text: $rectH).frame(width: 60) }
+                            }
+                        }
+                        Text("Screen coordinates (points, top-left origin). You can capture a region first to see its coordinates.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    case .appBundle:
+                        TextField("com.apple.Terminal", text: $bundleID)
+                        Text("Masks every window of this app. Find the bundle ID with: osascript -e 'id of app \"AppName\"'")
+                            .font(.caption).foregroundStyle(.secondary)
+                    case .windowTitle:
+                        TextField("Substring to match (case-insensitive)", text: $windowTitleContains)
+                        Text("Masks any on-screen window whose title contains this text.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Effect") {
+                    Picker("Style", selection: $styleType) {
+                        ForEach(StyleType.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    if styleType == .blur {
+                        LabeledContent("Radius") {
+                            HStack {
+                                Slider(value: $blurRadius, in: 5...80, step: 5).frame(width: 120)
+                                Text("\(Int(blurRadius)) px").frame(width: 44).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    if styleType == .pixelate {
+                        LabeledContent("Block size") {
+                            HStack {
+                                Slider(value: $pixelateSize, in: 4...40, step: 2).frame(width: 120)
+                                Text("\(Int(pixelateSize)) px").frame(width: 44).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+            .formStyle(.grouped)
+
+            Divider()
+
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                Button("Save") { save() }.buttonStyle(.borderedProminent)
+                    .disabled(!canSave)
+            }
+            .padding()
+        }
+        .frame(width: 480, height: 460)
+    }
+
+    private var canSave: Bool {
+        switch ruleType {
+        case .rect:        return (Double(rectW) ?? 0) > 0 && (Double(rectH) ?? 0) > 0
+        case .appBundle:   return !bundleID.trimmingCharacters(in: .whitespaces).isEmpty
+        case .windowTitle: return !windowTitleContains.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+    }
+
+    private func save() {
+        let rule: MaskRule
+        switch ruleType {
+        case .rect:
+            let r = CGRect(x: Double(rectX) ?? 0, y: Double(rectY) ?? 0,
+                           width: Double(rectW) ?? 400, height: Double(rectH) ?? 300)
+            rule = .rect(r)
+        case .appBundle:
+            rule = .appBundle(bundleID: bundleID.trimmingCharacters(in: .whitespaces))
+        case .windowTitle:
+            rule = .windowTitle(contains: windowTitleContains.trimmingCharacters(in: .whitespaces))
+        }
+
+        let style: MaskStyle
+        switch styleType {
+        case .blur:     style = .blur(radius: blurRadius)
+        case .pixelate: style = .pixelate(blockSize: pixelateSize)
+        case .blackout: style = .solidFill(red: 0, green: 0, blue: 0)
+        }
+
+        let result = MaskRegion(id: mask?.id ?? UUID(), name: name, rule: rule, style: style)
+        onSave(result)
     }
 }
 

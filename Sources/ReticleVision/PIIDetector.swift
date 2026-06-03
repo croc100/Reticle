@@ -58,7 +58,7 @@ public struct PIIDetector {
                 let hits = regex.matches(in: text, options: [], range: range)
                 if !hits.isEmpty {
                     // Mark the entire bounding box (character-level boxes require paid APIs)
-                    regions.append(MaskRegion(rect: pixelBox, style: .blur(radius: 20)))
+                    regions.append(MaskRegion(rule: .rect(pixelBox), style: .blur(radius: 20)))
                     break  // one redaction per text block; avoid duplicates
                 }
             }

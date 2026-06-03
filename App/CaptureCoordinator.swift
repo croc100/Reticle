@@ -3,6 +3,7 @@ import CoreGraphics
 import Defaults
 import ReticleCapture
 import ReticleCore
+import ReticleEffects
 import ReticleOverlay
 import ReticlePipeline
 import ReticleUploaders
@@ -226,6 +227,8 @@ final class CaptureCoordinator: ObservableObject {
 
     // MARK: - Shared finalize
 
+    private let maskRenderer = MaskRenderer()
+
     private func finalize(image: CGImage, sourceRect: CGRect, scaleFactor: CGFloat, profileDestinations: [String]? = nil) async {
         do {
             // Compute effective option set. When a workflow profile provides explicit output
@@ -255,6 +258,11 @@ final class CaptureCoordinator: ObservableObject {
             } else {
                 optSet = Set(globalOptions)
             }
+            // Apply static masks before pipeline
+            let masks = Defaults[.staticMasks].filter(\.enabled)
+            let maskedImage = masks.isEmpty ? image
+                : (try? maskRenderer.render(image: image, masks: masks, scaleFactor: scaleFactor)) ?? image
+
             // Ordered options array (for tasks that iterate in order)
             let options = AfterCaptureOption.allCases.filter { optSet.contains($0) }
             let directory = Defaults[.screenshotsDirectory]
@@ -291,7 +299,7 @@ final class CaptureCoordinator: ObservableObject {
             if optSet.contains(.watermark)     { afterCaptureTasks.append(WatermarkTask())      }
             if optSet.contains(.print)         { afterCaptureTasks.append(PrintTask())          }
 
-            let screenshot = Screenshot(image: image, sourceRect: sourceRect, scaleFactor: scaleFactor)
+            let screenshot = Screenshot(image: maskedImage, sourceRect: sourceRect, scaleFactor: scaleFactor)
             let ctx = try await pipeline.run(
                 preCapture: screenshot,
                 afterCapture: afterCaptureTasks,

@@ -31,6 +31,13 @@
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <!-- 권한 사용 설명 (시스템 다이얼로그에 표시) -->
+    <!-- Sparkle auto-update -->
+    <key>SUPublicEDKey</key>
+    <string>Kvx09NExIe9dB/f0KhBFrOnowICykxWz+xca6XegclQ=</string>
+    <key>SUFeedURL</key>
+    <string>https://croc100.github.io/Reticle/appcast.xml</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
     <key>NSScreenCaptureUsageDescription</key>
     <string>Reticle needs Screen Recording access to capture your screen.</string>
     <key>NSAccessibilityUsageDescription</key>
