@@ -201,14 +201,20 @@ jobs:
             build/${{ env.DMG_NAME }}
             build/Reticle.sha256
 
-      # ── Print install instructions ────────────────────────────────────────
-      - name: Print cask update instructions
+      # ── Update Homebrew Cask ──────────────────────────────────────────────
+      # Requires a PAT with repo scope stored as HOMEBREW_TOKEN secret.
+      - name: Update Homebrew Cask
+        if: ${{ secrets.HOMEBREW_TOKEN != '' }}
+        env:
+          HOMEBREW_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
         run: |
           SHA=$(cat build/Reticle.sha256)
-          echo "======================================================"
-          echo "  Homebrew Cask — update homebrew-reticle/reticle.rb"
-          echo "======================================================"
-          echo "  url    https://github.com/croc100/Reticle/releases/download/${{ github.ref_name }}/${{ env.DMG_NAME }}"
-          echo "  sha256 ${SHA}"
-          echo "  version ${{ env.VERSION }}"
-          echo "======================================================"
+          VERSION="${{ env.VERSION }}"
+          git clone "https://x-access-token:${HOMEBREW_TOKEN}@github.com/croc100/homebrew-reticle.git" /tmp/homebrew-reticle
+          printf 'cask "reticle" do\n  version "%s"\n  sha256 "%s"\n\n  url "https://github.com/croc100/Reticle/releases/download/v#{version}/Reticle-#{version}.dmg"\n  name "Reticle"\n  desc "ShareX-style screenshot tool for macOS -- annotate, redact, upload"\n  homepage "https://croc100.github.io/Reticle/"\n\n  app "Reticle.app"\n\n  zap trash: [\n    "~/Library/Preferences/com.croc100.Reticle.plist",\n    "~/Library/Application Support/Reticle",\n  ]\nend\n' "$VERSION" "$SHA" > /tmp/homebrew-reticle/Casks/reticle.rb
+          cd /tmp/homebrew-reticle
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/reticle.rb
+          git diff --cached --quiet || git commit -m "reticle: update to v${VERSION}"
+          git push

@@ -8,6 +8,33 @@ const base = import.meta.env.BASE_URL;
   <h1 class="text-3xl font-bold mb-2">Getting Started</h1>
   <p class="text-text-secondary mb-10">Install Reticle and take your first screenshot in about 5 minutes.</p>
 
+  <!-- Quick install -->
+  <section class="mb-12">
+    <h2 class="text-xl font-semibold mb-4">Quick Install</h2>
+    <div class="space-y-4">
+      <div class="p-5 bg-surface-raised border border-surface-border rounded-xl">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-sm font-semibold text-text-primary">Homebrew</span>
+          <span class="text-xs px-2 py-0.5 bg-accent/10 border border-accent/20 text-accent rounded-full">Recommended</span>
+        </div>
+        <pre class="text-xs font-mono text-text-secondary bg-black/30 rounded-lg p-3 overflow-x-auto">brew tap croc100/reticle
+brew install --cask reticle</pre>
+      </div>
+      <div class="p-5 bg-surface-raised border border-surface-border rounded-xl">
+        <div class="text-sm font-semibold text-text-primary mb-3">Download DMG</div>
+        <p class="text-xs text-text-secondary mb-3">
+          Grab the latest <code class="bg-black/40 px-1.5 py-0.5 rounded font-mono text-xs text-text-primary">Reticle-x.x.x.dmg</code> from
+          <a href="https://github.com/croc100/Reticle/releases" class="text-accent hover:underline">GitHub Releases</a>.
+          Drag <strong class="text-text-primary">Reticle.app</strong> to <strong class="text-text-primary">/Applications</strong>.
+        </p>
+        <p class="text-xs text-text-secondary">
+          <strong class="text-yellow-400">First launch only (not yet notarized):</strong> Right-click → <strong class="text-text-primary">Open</strong>, or run once in Terminal:
+        </p>
+        <pre class="text-xs font-mono text-text-secondary bg-black/30 rounded-lg p-3 mt-2">xattr -dr com.apple.quarantine /Applications/Reticle.app</pre>
+      </div>
+    </div>
+  </section>
+
   <!-- Requirements -->
   <section class="mb-12">
     <h2 class="text-xl font-semibold mb-4">Requirements</h2>

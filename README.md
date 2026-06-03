@@ -174,8 +174,6 @@ ShareX is the undisputed best screenshot tool — on Windows. Reticle aims for *
 
 - **Notarized DMG** — no more `xattr` bypass on first launch
 - **QR code** — generate / scan from captured image
-- **Vision PII detection** — auto-detect emails, phone numbers, API keys, JWTs
-- **Homebrew Cask** — `brew install --cask reticle`
 
 ---
 

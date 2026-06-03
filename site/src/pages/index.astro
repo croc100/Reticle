@@ -52,7 +52,7 @@ const afterCapture = [
 const uploads = [
   ['Imgur', '✅'],
   ['Amazon S3 / Backblaze B2 / Cloudflare R2', '✅'],
-  ['FTP / SFTP', '✅'],
+  ['SFTP', '✅'],
   ['Custom HTTP uploader (JSON-defined)', '✅'],
   ['Google Drive / Dropbox', '🔜'],
   ['URL shortener', '🔜'],
@@ -260,9 +260,7 @@ const compare = [
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           ['QR code', 'Generate & scan from captured image'],
-          ['Vision PII detection', 'Auto-detect emails, phone numbers, API keys, JWTs'],
           ['Notarized DMG', 'No more xattr bypass — drag-and-drop install'],
-          ['Homebrew Cask', 'brew install --cask reticle'],
         ].map(([title, desc]) => (
           <div class="flex gap-3 p-4 rounded-xl border border-dashed border-surface-border">
             <span class="text-lg mt-0.5">🔜</span>
