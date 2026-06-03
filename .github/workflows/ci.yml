@@ -144,7 +144,7 @@ jobs:
           # Sign the DMG — private key fed via stdin from Actions secret
           ED_SIG=$(echo "$SPARKLE_PRIVATE_KEY" \
             | /tmp/sparkle_tools/bin/sign_update --ed-key-file - "$DMG_PATH" \
-            | grep -oP '(?<=sparkle:edSignature=")[^"]+')
+            | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
 
           # Prepend new <item> to the appcast channel
           BUILD=$(grep -m1 CFBundleVersion App/Info.plist | grep -oE '[0-9]+')
