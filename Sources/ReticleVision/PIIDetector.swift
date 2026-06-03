@@ -1,6 +1,7 @@
 import Vision
 import CoreGraphics
 import ReticleCore
+import Defaults
 import Foundation
 
 /// Runs Vision OCR on a CGImage and returns MaskRegions for detected PII.
@@ -39,6 +40,10 @@ public struct PIIDetector {
         let imgW = CGFloat(image.width)
         let imgH = CGFloat(image.height)
 
+        let enabledPatterns = Set(Defaults[.piiEnabledPatterns])
+        let activePatterns = Self.patterns.filter { enabledPatterns.contains($0.name) }
+        let style = Self.redactionStyle()
+
         for obs in observations {
             // VNRecognizedTextObservation.boundingBox: normalised (0-1), origin bottom-left
             let rawBox = obs.boundingBox
@@ -52,18 +57,23 @@ public struct PIIDetector {
             guard let candidate = obs.topCandidates(1).first else { continue }
             let text = candidate.string
 
-            // Scan recognised text for every PII pattern
             let range = NSRange(text.startIndex..., in: text)
-            for (_, regex) in Self.patterns {
-                let hits = regex.matches(in: text, options: [], range: range)
-                if !hits.isEmpty {
-                    // Mark the entire bounding box (character-level boxes require paid APIs)
-                    regions.append(MaskRegion(rule: .rect(pixelBox), style: .blur(radius: 20)))
-                    break  // one redaction per text block; avoid duplicates
+            for (_, regex) in activePatterns {
+                if !regex.matches(in: text, options: [], range: range).isEmpty {
+                    regions.append(MaskRegion(rule: .rect(pixelBox), style: style))
+                    break
                 }
             }
         }
         return regions
+    }
+
+    private static func redactionStyle() -> MaskStyle {
+        switch Defaults[.piiRedactionStyle] {
+        case "pixelate":  return .pixelate(blockSize: Defaults[.piiPixelateSize])
+        case "solidFill": return .solidFill(red: 0, green: 0, blue: 0)
+        default:          return .blur(radius: Defaults[.piiBlurRadius])
+        }
     }
 
     // MARK: - Vision OCR

@@ -197,6 +197,18 @@ public extension Defaults.Keys {
 
     /// Rules applied to every capture automatically before the output pipeline runs.
     static let staticMasks = Key<[MaskRegion]>("staticMasks", default: [])
+
+    // MARK: PII Auto-Redaction
+
+    /// Pattern names that are active. Empty = all active.
+    static let piiEnabledPatterns = Key<[String]>(
+        "piiEnabledPatterns",
+        default: ["email", "phone_intl", "credit_card", "iban", "jwt", "aws_key", "github_pat", "hex_secret"]
+    )
+    /// "blur", "pixelate", or "solidFill"
+    static let piiRedactionStyle  = Key<String>("piiRedactionStyle",  default: "blur")
+    static let piiBlurRadius      = Key<Double>("piiBlurRadius",      default: 20.0)
+    static let piiPixelateSize    = Key<Double>("piiPixelateSize",    default: 10.0)
 }
 
 // MARK: - Auto Capture Mode

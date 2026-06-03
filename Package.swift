@@ -89,7 +89,7 @@ let package = Package(
         // phone numbers, API keys, JWTs, AWS keys, etc.
         .target(
             name: "ReticleVision",
-            dependencies: ["ReticleCore"],
+            dependencies: ["ReticleCore", .product(name: "Defaults", package: "Defaults")],
             path: "Sources/ReticleVision"
         ),
 

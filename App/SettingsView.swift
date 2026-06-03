@@ -276,6 +276,10 @@ private struct PipelineTab: View {
                 }
             }
 
+            if options.contains(.autoRedactPII) {
+                PIISettingsSection()
+            }
+
             let hasAnyUpload = options.contains(.uploadToImgur) || options.contains(.uploadToS3)
                             || options.contains(.uploadToSFTP)  || options.contains(.uploadCustomHTTP)
             if hasAnyUpload {
@@ -1359,6 +1363,65 @@ private struct ConnectionTestBadge: View {
             Label(msg, systemImage: "xmark.circle.fill")
                 .foregroundStyle(.red).font(.caption).lineLimit(2)
         }
+    }
+}
+
+// MARK: - PII Settings Section
+
+private struct PIISettingsSection: View {
+    @Default(.piiEnabledPatterns) var enabledPatterns
+    @Default(.piiRedactionStyle)  var redactionStyle
+    @Default(.piiBlurRadius)      var blurRadius
+    @Default(.piiPixelateSize)    var pixelateSize
+
+    private let allPatterns: [(id: String, label: String)] = [
+        ("email",       "Email addresses"),
+        ("phone_intl",  "Phone numbers"),
+        ("credit_card", "Credit card numbers"),
+        ("iban",        "IBAN bank account numbers"),
+        ("jwt",         "JWT tokens"),
+        ("aws_key",     "AWS access keys"),
+        ("github_pat",  "GitHub personal access tokens"),
+        ("hex_secret",  "Hex secrets (32–64 chars)"),
+    ]
+
+    var body: some View {
+        Section {
+            Picker("Redaction style", selection: $redactionStyle) {
+                Text("Blur").tag("blur")
+                Text("Pixelate").tag("pixelate")
+                Text("Black box").tag("solidFill")
+            }
+            if redactionStyle == "blur" {
+                LabeledContent("Blur radius") {
+                    HStack {
+                        Slider(value: $blurRadius, in: 5...40, step: 1)
+                        Text("\(Int(blurRadius)) px").monospacedDigit().frame(width: 44, alignment: .trailing)
+                    }
+                }
+            }
+            if redactionStyle == "pixelate" {
+                LabeledContent("Block size") {
+                    HStack {
+                        Slider(value: $pixelateSize, in: 4...24, step: 1)
+                        Text("\(Int(pixelateSize)) px").monospacedDigit().frame(width: 44, alignment: .trailing)
+                    }
+                }
+            }
+        } header: { Text("PII Redaction Style") }
+
+        Section {
+            ForEach(allPatterns, id: \.id) { pattern in
+                Toggle(pattern.label, isOn: Binding(
+                    get: { enabledPatterns.contains(pattern.id) },
+                    set: { on in
+                        if on { if !enabledPatterns.contains(pattern.id) { enabledPatterns.append(pattern.id) } }
+                        else  { enabledPatterns.removeAll { $0 == pattern.id } }
+                    }
+                ))
+            }
+        } header: { Text("Detected Pattern Types") }
+          footer: { Text("Disable pattern types that cause false positives on your screenshots.").font(.caption).foregroundStyle(.secondary) }
     }
 }
 

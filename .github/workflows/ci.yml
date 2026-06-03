@@ -136,7 +136,6 @@ jobs:
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
-          set -x
           DMG_PATH="build/${{ env.DMG_NAME }}"
           DMG_SIZE=$(stat -f%z "$DMG_PATH")
           DMG_URL="https://github.com/croc100/Reticle/releases/download/${{ github.ref_name }}/${{ env.DMG_NAME }}"
