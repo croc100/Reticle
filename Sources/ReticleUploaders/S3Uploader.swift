@@ -81,6 +81,62 @@ public struct S3Uploader: Uploader, Sendable {
         return publicURL(for: key)
     }
 
+    /// Sends a signed HEAD request to the bucket to verify credentials and connectivity.
+    /// Succeeds on HTTP 200 (OK) or 403 (reachable but access denied — misconfigured permissions).
+    public func testConnection() async throws {
+        let url = config.pathStyle
+            ? URL(string: "https://s3.\(config.region).amazonaws.com/\(config.bucket)/")!
+            : URL(string: "https://\(config.bucket).s3.\(config.region).amazonaws.com/")!
+
+        let now = Date()
+        let datetimeString = iso8601DateTime(now)
+        let dateString = String(datetimeString.prefix(8))
+        let payloadHash = SHA256.hash(data: Data()).hexString  // empty body
+        let host = url.host!
+
+        var headers: [(String, String)] = [
+            ("host",                host),
+            ("x-amz-content-sha256", payloadHash),
+            ("x-amz-date",          datetimeString),
+        ]
+        headers.sort { $0.0 < $1.0 }
+        let canonicalHeaders  = headers.map { "\($0.0):\($0.1)" }.joined(separator: "\n") + "\n"
+        let signedHeadersList = headers.map { $0.0 }.joined(separator: ";")
+        let canonicalURI      = url.path.isEmpty ? "/" : url.path
+
+        let canonicalRequest = [
+            "HEAD", canonicalURI, "",
+            canonicalHeaders, signedHeadersList, payloadHash,
+        ].joined(separator: "\n")
+
+        let credentialScope = "\(dateString)/\(config.region)/s3/aws4_request"
+        let stringToSign = [
+            "AWS4-HMAC-SHA256", datetimeString, credentialScope,
+            SHA256.hash(data: Data(canonicalRequest.utf8)).hexString,
+        ].joined(separator: "\n")
+
+        let signingKey = deriveSigningKey(secret: config.secretAccessKey, date: dateString,
+                                         region: config.region, service: "s3")
+        let signature = hexString(HMAC<SHA256>.authenticationCode(
+            for: Data(stringToSign.utf8), using: SymmetricKey(data: signingKey)))
+        let authorization =
+            "AWS4-HMAC-SHA256 Credential=\(config.accessKeyID)/\(credentialScope), " +
+            "SignedHeaders=\(signedHeadersList), Signature=\(signature)"
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
+        request.setValue(authorization, forHTTPHeaderField: "Authorization")
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw UploadError.networkError(underlying: URLError(.badServerResponse))
+        }
+        guard http.statusCode == 200 || http.statusCode == 403 else {
+            throw UploadError.serverError(statusCode: http.statusCode, body: "")
+        }
+    }
+
     // MARK: - URL helpers
 
     private func endpointURL(key: String) -> URL {

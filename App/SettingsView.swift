@@ -1,8 +1,10 @@
 import SwiftUI
 import Defaults
 import HotKey
+import ServiceManagement
 import ReticleCore
 import ReticleVision
+import ReticleUploaders
 
 // MARK: - Root
 
@@ -36,10 +38,26 @@ private struct GeneralTab: View {
     @Default(.autoCaptureInterval)  var autoCaptureInterval
     @Default(.autoCaptureMode)      var autoCaptureMode
 
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+
     private let sounds = ["", "Grab", "Glass", "Blow", "Funk", "Pop", "Tink"]
 
     var body: some View {
         Form {
+            Section("System") {
+                Toggle("Launch at login", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { enabled in
+                        Task {
+                            do {
+                                if enabled { try SMAppService.mainApp.register() }
+                                else { try await SMAppService.mainApp.unregister() }
+                            } catch {
+                                launchAtLogin = !enabled
+                            }
+                        }
+                    }
+            }
+
             Section("Sound") {
                 Toggle("Play sound after capture", isOn: $soundEnabled)
                 if soundEnabled {
@@ -194,6 +212,9 @@ private struct PipelineTab: View {
     @Default(.customHTTPURL)          var customHTTPURL
     @Default(.customHTTPFileField)    var customHTTPFileField
     @Default(.customHTTPResponsePath) var customHTTPResponsePath
+
+    @State private var sftpTestState: ConnectionTestState = .idle
+    @State private var s3TestState:   ConnectionTestState = .idle
     @Default(.customHTTPHeadersRaw)   var customHTTPHeadersRaw
     @Default(.watermarkText)          var watermarkText
     @Default(.watermarkPosition)      var watermarkPosition
@@ -324,6 +345,25 @@ private struct PipelineTab: View {
                         TextField("https://cdn.example.com/screenshots/  (for the clipboard link)", text: $sftpPublicURL)
                             .textFieldStyle(.roundedBorder)
                     }
+                    HStack {
+                        Button("Test Connection") {
+                            sftpTestState = .testing
+                            let cfg = SFTPUploader.Config(
+                                host: sftpHost, port: sftpPort, username: sftpUsername,
+                                password: sftpPassword, privateKeyPath: sftpPrivateKeyPath,
+                                remotePath: sftpRemotePath)
+                            Task {
+                                do {
+                                    try await SFTPUploader(config: cfg).testConnection()
+                                    sftpTestState = .success("Connected")
+                                } catch {
+                                    sftpTestState = .failure(error.localizedDescription)
+                                }
+                            }
+                        }
+                        .disabled(sftpHost.isEmpty || sftpUsername.isEmpty || sftpTestState == .testing)
+                        ConnectionTestBadge(state: sftpTestState)
+                    }
                     Text("Uploads via curl (requires the server's host key to be in ~/.ssh/known_hosts). Password or private key must be set.")
                         .font(.caption).foregroundStyle(.secondary)
                 } header: { Text("SFTP Settings") }
@@ -357,6 +397,26 @@ private struct PipelineTab: View {
                             .textFieldStyle(.roundedBorder)
                     }
                     Toggle("Path-style endpoint", isOn: $s3PathStyle)
+                    HStack {
+                        Button("Test Connection") {
+                            s3TestState = .testing
+                            let cfg = S3Uploader.Config(
+                                bucket: s3Bucket, region: s3Region,
+                                accessKeyID: s3AccessKeyID, secretAccessKey: s3SecretAccessKey,
+                                keyPrefix: s3KeyPrefix, publicURLTemplate: s3PublicURLTemplate,
+                                pathStyle: s3PathStyle)
+                            Task {
+                                do {
+                                    try await S3Uploader(config: cfg).testConnection()
+                                    s3TestState = .success("Connected")
+                                } catch {
+                                    s3TestState = .failure(error.localizedDescription)
+                                }
+                            }
+                        }
+                        .disabled(s3Bucket.isEmpty || s3AccessKeyID.isEmpty || s3TestState == .testing)
+                        ConnectionTestBadge(state: s3TestState)
+                    }
                     Text("Needs s3:PutObject permission. Leave Public URL blank to use the default S3 HTTPS URL.")
                         .font(.caption).foregroundStyle(.secondary)
                 } header: { Text("Amazon S3 Settings") }
@@ -983,6 +1043,34 @@ private extension Color {
             green: Double((rgb >>  8) & 0xFF) / 255,
             blue:  Double( rgb        & 0xFF) / 255
         )
+    }
+}
+
+// MARK: - ConnectionTestState
+
+private enum ConnectionTestState: Equatable {
+    case idle
+    case testing
+    case success(String)
+    case failure(String)
+}
+
+private struct ConnectionTestBadge: View {
+    let state: ConnectionTestState
+
+    var body: some View {
+        switch state {
+        case .idle:
+            EmptyView()
+        case .testing:
+            ProgressView().controlSize(.small)
+        case .success(let msg):
+            Label(msg, systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green).font(.caption)
+        case .failure(let msg):
+            Label(msg, systemImage: "xmark.circle.fill")
+                .foregroundStyle(.red).font(.caption).lineLimit(2)
+        }
     }
 }
 

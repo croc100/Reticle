@@ -58,17 +58,8 @@ public struct SFTPUploader: Uploader, Sendable {
         defer { try? FileManager.default.removeItem(at: tmpImage) }
 
         // 2. Write a temp .netrc for password auth.
-        var netrcURL: URL? = nil
-        if !config.password.isEmpty && config.privateKeyPath.isEmpty {
-            let content = "machine \(config.host)\nlogin \(config.username)\npassword \(config.password)\n"
-            let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("reticle_netrc_\(UUID().uuidString)")
-            try content.write(to: url, atomically: true, encoding: .utf8)
-            // Restrict permissions so only the current user can read it.
-            try FileManager.default.setAttributes(
-                [.posixPermissions: NSNumber(value: 0o600)], ofItemAtPath: url.path)
-            netrcURL = url
-        }
+        let netrcURL = try config.password.isEmpty || !config.privateKeyPath.isEmpty
+            ? nil : makeNetrcFile()
         defer { if let u = netrcURL { try? FileManager.default.removeItem(at: u) } }
 
         // 3. Build curl arguments.
@@ -80,11 +71,7 @@ public struct SFTPUploader: Uploader, Sendable {
             "--show-error",
             remoteURL,
         ]
-        if let nc = netrcURL {
-            args += ["--netrc-file", nc.path]
-        } else if !config.privateKeyPath.isEmpty {
-            args += ["--key", config.privateKeyPath]
-        }
+        appendAuthArgs(to: &args, netrcURL: netrcURL)
 
         // 4. Run curl.
         let output = try await runProcess("/usr/bin/curl", arguments: args)
@@ -102,7 +89,44 @@ public struct SFTPUploader: Uploader, Sendable {
         return url
     }
 
+    /// Verifies that a directory listing of `remotePath` succeeds.
+    public func testConnection() async throws {
+        let netrcURL = try config.password.isEmpty || !config.privateKeyPath.isEmpty
+            ? nil : makeNetrcFile()
+        defer { if let u = netrcURL { try? FileManager.default.removeItem(at: u) } }
+
+        let remote = "sftp://\(config.username)@\(config.host):\(config.port)\(config.remotePath)"
+        var args = ["--list-only", "--insecure", "--silent", "--show-error", remote]
+        appendAuthArgs(to: &args, netrcURL: netrcURL)
+
+        let output = try await runProcess("/usr/bin/curl", arguments: args)
+        if !output.errorOutput.isEmpty {
+            throw SFTPError.transferFailed(output.errorOutput)
+        }
+    }
+
     // MARK: - Helpers
+
+    /// Creates a temp .netrc with 0o600 permissions atomically (file appears with correct permissions from the start).
+    private func makeNetrcFile() throws -> URL {
+        let content = "machine \(config.host)\nlogin \(config.username)\npassword \(config.password)\n"
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("reticle_netrc_\(UUID().uuidString)")
+        guard let data = content.data(using: .utf8),
+              FileManager.default.createFile(
+                atPath: url.path, contents: data,
+                attributes: [.posixPermissions: NSNumber(value: Int16(0o600))])
+        else { throw SFTPError.transferFailed("Failed to write credentials file") }
+        return url
+    }
+
+    private func appendAuthArgs(to args: inout [String], netrcURL: URL?) {
+        if let nc = netrcURL {
+            args += ["--netrc-file", nc.path]
+        } else if !config.privateKeyPath.isEmpty {
+            args += ["--key", config.privateKeyPath]
+        }
+    }
 
     private func encodePNG(_ image: CGImage, to url: URL) throws {
         guard let dest = CGImageDestinationCreateWithURL(

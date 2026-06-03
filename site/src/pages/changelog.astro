@@ -5,6 +5,22 @@ import Footer from '../components/Footer.astro';
 
 const releases = [
   {
+    version: '0.4.0',
+    date: '2026-06-03',
+    tag: 'alpha',
+    changes: {
+      added: [
+        'Launch at login — Settings → General toggle (SMAppService, macOS 13+)',
+        'Test Connection button for SFTP — verifies host, credentials, and remote path via curl before upload',
+        'Test Connection button for S3 — sends a signed HEAD request to the bucket to verify credentials and connectivity',
+      ],
+      fixed: [
+        'SFTPUploader: .netrc temp file is now created with 0o600 permissions atomically — eliminates the brief world-readable window between write and chmod',
+      ],
+      changed: [],
+    },
+  },
+  {
     version: '0.3.0',
     date: '2026-06-03',
     tag: 'alpha',
