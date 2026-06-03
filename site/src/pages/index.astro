@@ -94,7 +94,7 @@ const compare = [
     <div class="relative max-w-3xl mx-auto">
       <div class="inline-flex items-center gap-2 bg-surface-raised border border-surface-border rounded-full px-3 py-1 text-xs text-text-secondary mb-8">
         <span class="w-1.5 h-1.5 rounded-full bg-accent inline-block animate-pulse"></span>
-        v0.4.0 alpha — DMG available
+        v0.5.0 alpha — DMG available
       </div>
 
       <h1 class="text-5xl sm:text-6xl font-bold tracking-tight leading-tight mb-6">
@@ -260,10 +260,8 @@ const compare = [
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           ['QR code', 'Generate & scan from captured image'],
-          ['Static Mask', 'Register regions once, auto-redact on every capture'],
           ['Vision PII detection', 'Auto-detect emails, phone numbers, API keys, JWTs'],
           ['Notarized DMG', 'No more xattr bypass — drag-and-drop install'],
-          ['Sparkle auto-update', 'In-app update notifications'],
           ['Homebrew Cask', 'brew install --cask reticle'],
         ].map(([title, desc]) => (
           <div class="flex gap-3 p-4 rounded-xl border border-dashed border-surface-border">

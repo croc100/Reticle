@@ -151,7 +151,7 @@ Each tool is **sticky** — stays active until you switch to another.
 | Screen recording (MP4/GIF) | ✅ | ✅ | ❌ | ✅ | ❌ |
 | Pixel-perfect capture | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Display P3 color space preserved | ✅ | ✅ | ❓ | ❓ | ❌ |
-| **Static Mask (auto-redact regions)** | 🔜 | ❌ | ❌ | ❌ | ❌ |
+| **Static Mask (auto-redact regions)** | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Vision PII auto-detection** | 🔜 | ❌ | ❌ | ❌ | ❌ |
 
 ### Reticle vs. ShareX
@@ -173,9 +173,7 @@ ShareX is the undisputed best screenshot tool — on Windows. Reticle aims for *
 ## Coming Soon
 
 - **Notarized DMG** — no more `xattr` bypass on first launch
-- **Sparkle auto-update** — in-app update notifications
 - **QR code** — generate / scan from captured image
-- **Static Mask** — register regions once, auto-redact on every capture
 - **Vision PII detection** — auto-detect emails, phone numbers, API keys, JWTs
 - **Homebrew Cask** — `brew install --cask reticle`
 
