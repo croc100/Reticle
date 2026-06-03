@@ -100,7 +100,7 @@ Each tool is **sticky** — stays active until you switch to another.
 |---|:---:|
 | Imgur | ✅ |
 | Amazon S3 / Backblaze B2 / Cloudflare R2 | ✅ |
-| FTP / SFTP | ✅ |
+| SFTP | ✅ |
 | Custom HTTP uploader (JSON-defined) | ✅ |
 | Google Drive / Dropbox | 🔜 |
 | URL shortener | 🔜 |

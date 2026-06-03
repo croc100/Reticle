@@ -46,12 +46,12 @@ const base = import.meta.env.BASE_URL;
   </section>
 
   <section class="mb-12">
-    <h2 class="text-xl font-semibold mb-4">FTP / SFTP</h2>
-    <p class="text-sm text-text-secondary mb-4">Upload directly to any server you have FTP or SFTP access to.</p>
+    <h2 class="text-xl font-semibold mb-4">SFTP</h2>
+    <p class="text-sm text-text-secondary mb-4">Upload directly to any server you have SFTP access to.</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {[
         ['Host', 'Server hostname or IP address.'],
-        ['Port', '21 for FTP, 22 for SFTP.'],
+        ['Port', 'Default 22.'],
         ['Username / Password', 'Your server credentials.'],
         ['Remote path', 'The directory on the server where files will be placed.'],
         ['Base URL', 'The public URL that maps to the remote path, so Reticle can copy a shareable link after upload.'],
