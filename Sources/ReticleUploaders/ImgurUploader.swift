@@ -15,12 +15,15 @@ public struct ImgurUploader: Uploader, Sendable {
 
     // MARK: - Uploader
 
+    // swiftlint:disable:next force_unwrapping
+    private static let endpoint = URL(string: "https://api.imgur.com/3/image")!
+
     public func upload(_ image: CGImage) async throws -> URL {
         guard let pngData = pngData(from: image) else {
             throw UploadError.encodingFailed
         }
 
-        var request = URLRequest(url: URL(string: "https://api.imgur.com/3/image")!)
+        var request = URLRequest(url: Self.endpoint)
         request.httpMethod = "POST"
         request.setValue("Client-ID \(clientID)", forHTTPHeaderField: "Authorization")
 
@@ -63,11 +66,11 @@ public struct ImgurUploader: Uploader, Sendable {
         let contentDisposition = "Content-Disposition: form-data; name=\"image\"; filename=\"screenshot.png\""
         let contentType = "Content-Type: image/png"
 
-        body.append("--\(boundary)\(crlf)".data(using: .utf8)!)
-        body.append("\(contentDisposition)\(crlf)".data(using: .utf8)!)
-        body.append("\(contentType)\(crlf)\(crlf)".data(using: .utf8)!)
+        body.append(Data("--\(boundary)\(crlf)".utf8))
+        body.append(Data("\(contentDisposition)\(crlf)".utf8))
+        body.append(Data("\(contentType)\(crlf)\(crlf)".utf8))
         body.append(data)
-        body.append("\(crlf)--\(boundary)--\(crlf)".data(using: .utf8)!)
+        body.append(Data("\(crlf)--\(boundary)--\(crlf)".utf8))
         return body
     }
 }

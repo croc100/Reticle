@@ -155,11 +155,11 @@ public struct CustomHTTPUploader: Uploader, Sendable {
     private func multipartBody(data: Data, field: String, filename: String, boundary: String) -> Data {
         var body = Data()
         let crlf = "\r\n"
-        body.append("--\(boundary)\(crlf)".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"\(field)\"; filename=\"\(filename)\"\(crlf)".data(using: .utf8)!)
-        body.append("Content-Type: image/png\(crlf)\(crlf)".data(using: .utf8)!)
+        body.append(Data("--\(boundary)\(crlf)".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"\(field)\"; filename=\"\(filename)\"\(crlf)".utf8))
+        body.append(Data("Content-Type: image/png\(crlf)\(crlf)".utf8))
         body.append(data)
-        body.append("\(crlf)--\(boundary)--\(crlf)".data(using: .utf8)!)
+        body.append(Data("\(crlf)--\(boundary)--\(crlf)".utf8))
         return body
     }
 
