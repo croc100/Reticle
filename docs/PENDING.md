@@ -52,10 +52,15 @@ and no test can confirm that end to end. **Needs a Mac.**
 
 ## 2. Bugs found but not yet fixed
 
-All three are in `S3Uploader` and are **CI-verifiable** — SigV4 is pure logic and AWS
-publishes test vectors, so these can be fixed and proven without a Mac.
+Now filed as issues — [#2](https://github.com/croc100/Reticle/issues/2),
+[#3](https://github.com/croc100/Reticle/issues/3),
+[#4](https://github.com/croc100/Reticle/issues/4). The detail is kept here as well since
+this is the document you read first; the issues are where progress gets tracked.
 
-### 2a. SigV4 signature breaks on any key needing percent-encoding
+The two `S3Uploader` ones are **CI-verifiable** — SigV4 is pure logic and AWS publishes
+test vectors, so they can be fixed and proven without a Mac.
+
+### 2a. SigV4 signature breaks on any key needing percent-encoding — [#2](https://github.com/croc100/Reticle/issues/2)
 
 `Sources/ReticleUploaders/S3Uploader.swift:105` and `:192`
 
@@ -76,7 +81,7 @@ unencoded, while AWS requires everything outside `A-Z a-z 0-9 - _ . ~` (and `/`)
 encoded. Fix both together by encoding the key once with a strict unreserved set and
 building the canonical URI from that same string, rather than round-tripping through `URL`.
 
-### 2b. Force unwraps on user-supplied strings can crash the app
+### 2b. Force unwraps on user-supplied strings can crash the app — [#3](https://github.com/croc100/Reticle/issues/3)
 
 `Sources/ReticleUploaders/S3Uploader.swift:88, 89, 95, 145, 147, 154`
 
@@ -92,7 +97,7 @@ the next upload. The bucket and region interpolations above have the same shape.
 SwiftLint has `force_unwrapping` enabled as an opt-in rule, so these are already being
 reported as warnings — CI does not run `--strict`, so nothing fails on them.
 
-### 2c. `testConnection` duplicates the signing logic
+### 2c. `testConnection` duplicates the signing logic — folded into [#2](https://github.com/croc100/Reticle/issues/2)
 
 `Sources/ReticleUploaders/S3Uploader.swift:81–135` repeats about 40 lines of
 `buildSignedRequest`. Two copies of a signing routine will drift, and fixing 2a means
@@ -100,7 +105,7 @@ fixing it in both places. Worth extracting one `canonicalRequest`/`signature` he
 both paths call — that refactor is also what makes the SigV4 test vectors easy to assert
 against.
 
-### 2d. `ClipboardOutput` does not do what its comment says
+### 2d. `ClipboardOutput` does not do what its comment says — [#4](https://github.com/croc100/Reticle/issues/4)
 
 `Sources/ReticlePipeline/ClipboardOutput.swift:7`
 
@@ -189,7 +194,7 @@ network, plus two that are pure logic and simply untested.
 ## Suggested order
 
 1. **Merge PR #1** once the runtime checks in §1 pass on a Mac.
-2. **Fix §2a and §2b** — real bugs, fully provable in CI, no Mac needed. Add the
+2. **Fix [#2](https://github.com/croc100/Reticle/issues/2) and [#3](https://github.com/croc100/Reticle/issues/3)** — real bugs, fully provable in CI, no Mac needed. Add the
    `ReticleUploaders` test target from §3 in the same pass, since 2c's refactor is what
    makes the SigV4 vectors testable.
 3. **Fix §5** — documentation only, no risk, and it stops the README from
