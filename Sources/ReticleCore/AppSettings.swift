@@ -200,7 +200,8 @@ public extension Defaults.Keys {
 
     // MARK: PII Auto-Redaction
 
-    /// Pattern names that are active. Empty = all active.
+    /// Pattern names that are active. Empty = none active, i.e. redaction is off —
+    /// untoggling every pattern in Settings turns the feature off rather than on.
     static let piiEnabledPatterns = Key<[String]>(
         "piiEnabledPatterns",
         default: ["email", "phone_intl", "credit_card", "iban", "jwt", "aws_key", "github_pat", "hex_secret"]
