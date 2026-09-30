@@ -167,5 +167,12 @@ let package = Package(
             dependencies: ["ReticleCapture"],
             path: "Tests/ReticleCaptureTests"
         ),
+        // Covers the PII pattern set, which is pure string matching. The Vision OCR step
+        // around it needs real rendered text and is not exercised here.
+        .testTarget(
+            name: "ReticleVisionTests",
+            dependencies: ["ReticleVision", "ReticleCore"],
+            path: "Tests/ReticleVisionTests"
+        ),
     ]
 )
