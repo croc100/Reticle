@@ -147,7 +147,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ReticlePipelineTests",
-            dependencies: ["ReticlePipeline"],
+            dependencies: ["ReticlePipeline", "ReticleCore", "ReticleNaming"],
             path: "Tests/ReticlePipelineTests"
         ),
         .testTarget(
