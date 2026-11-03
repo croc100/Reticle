@@ -91,6 +91,49 @@ public actor Capturer {
         return Screenshot(image: image, sourceRect: display.frame, scaleFactor: scale)
     }
 
+    /// Captures one frozen frame per display, with the streams running concurrently.
+    ///
+    /// Stream setup is what a capture actually spends its time on:
+    /// `startCapture()` negotiates with the window server, and the first
+    /// complete frame only follows once that is done.  Taken one display at a
+    /// time, a three-monitor overlay paid that cost three times over before
+    /// anything appeared on screen — and the overlay cannot be shown until the
+    /// last display's background is in hand, so the whole wait is visible as
+    /// lag between the hotkey and the dimmed screen.
+    ///
+    /// The actor is reentrant, so the per-display calls release it at each
+    /// suspension point and their setups overlap; the wait becomes roughly that
+    /// of the slowest single display instead of the sum of all of them.  Peak
+    /// memory is unchanged, because the caller holds every frame at once anyway.
+    ///
+    /// Results come back in the order of `displays`, not the order they finished.
+    public func capture(displays: [SCDisplay]) async throws -> [Screenshot] {
+        // One display is the common case and a task group would only add
+        // scheduling to it.
+        guard displays.count > 1 else {
+            guard let display = displays.first else { return [] }
+            let shot = try await capture(display: display)
+            return [shot]
+        }
+
+        let boxed = UncheckedBox(value: displays)
+        var collected = [Screenshot?](repeating: nil, count: displays.count)
+
+        try await withThrowingTaskGroup(of: (Int, Screenshot).self) { group in
+            for index in displays.indices {
+                group.addTask { [self] in
+                    let shot = try await capture(display: boxed.value[index])
+                    return (index, shot)
+                }
+            }
+            for try await (index, shot) in group {
+                collected[index] = shot
+            }
+        }
+
+        return collected.compactMap { $0 }
+    }
+
     // MARK: - SCStream helpers
 
     private func streamCapture(display: SCDisplay) async throws -> CGImage {
@@ -171,6 +214,18 @@ public actor Capturer {
         }
         return cropped
     }
+}
+
+// MARK: - Sendable bridging
+
+/// Carries a non-`Sendable` ScreenCaptureKit value into a child task.
+///
+/// `SCDisplay` is a read-only description of a connected display — an ID, a
+/// frame and a pixel size — and ScreenCaptureKit hands out the same instances
+/// to every caller.  Nothing here mutates one; each child task only reads it to
+/// build its own `SCContentFilter`.
+private struct UncheckedBox<Value>: @unchecked Sendable {
+    let value: Value
 }
 
 // MARK: - Timeout helper

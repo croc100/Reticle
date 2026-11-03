@@ -179,16 +179,17 @@ final class CaptureCoordinator: ObservableObject {
     /// single `SCShareableContent` query.  Going through `capture(mode:)` here
     /// instead cost two more per display — a permission probe and a second
     /// content fetch to look up a display we were already holding.
+    ///
+    /// The displays are captured concurrently; the overlay cannot appear until
+    /// the last background is in hand, so doing them in turn put the sum of
+    /// every display's stream setup between the hotkey and anything on screen.
     private func captureBackgrounds(
         for displays: [SCDisplay]
     ) async throws -> [(frame: CGRect, image: CGImage)] {
-        var backgrounds: [(frame: CGRect, image: CGImage)] = []
-        backgrounds.reserveCapacity(displays.count)
-        for display in displays {
-            let shot = try await capturer.capture(display: display)
-            backgrounds.append((frame: display.frame, image: shot.image))
-        }
-        return backgrounds
+        let shots = try await capturer.capture(displays: displays)
+        // `sourceRect` is the display frame the shot was taken from, so the
+        // pairing survives even if the list ever comes back short.
+        return shots.map { (frame: $0.sourceRect, image: $0.image) }
     }
 
     // MARK: - Scroll Capture
