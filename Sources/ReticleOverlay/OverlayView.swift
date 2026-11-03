@@ -44,6 +44,28 @@ final class OverlayView: NSView {
     private var eraserDidPushUndo = false
     private var editingObserver: NSObjectProtocol?
 
+    /// Identifies one rendered blur/pixellate output.
+    ///
+    /// `baseCGImage` is fixed for the overlay's lifetime, so a render stays
+    /// valid as long as the annotation's geometry and strength are unchanged.
+    private struct EffectKey: Hashable {
+        let annotation: ObjectIdentifier
+        let rect: CGRect
+        let strength: CGFloat
+        let scale: CGFloat
+    }
+
+    /// Rendered blur/pixellate output, reused across redraws.
+    ///
+    /// `draw(_:)` runs on every mouse move, and both effects re-ran their Core
+    /// Image filter from scratch each time, for every such annotation on
+    /// screen — so hovering with three blurs placed meant three Gaussian blurs
+    /// per frame over pixels that had not changed.
+    private var effectCache: [EffectKey: CGImage] = [:]
+    /// Keys touched by the current `draw(_:)`, used to prune the cache so a
+    /// dragged annotation does not leave a render behind on every frame.
+    private var effectKeysThisFrame: Set<EffectKey> = []
+
     init(backgroundImage: CGImage, scaleFactor: CGFloat) {
         self.baseCGImage = backgroundImage
         self.scaleFactor = scaleFactor
@@ -78,22 +100,24 @@ final class OverlayView: NSView {
         guard let ctx = NSGraphicsContext.current?.cgContext,
               let vm = viewModel else { return }
 
+        effectKeysThisFrame.removeAll(keepingCapacity: true)
+
         drawBackground(in: ctx)
-        ctx.setFillColor(NSColor.black.withAlphaComponent(0.45).cgColor)
-        ctx.fill(bounds)
 
         let displaySel = vm.selectionRect ?? liveSelectionRect
         if let sel = displaySel, sel.width > 2, sel.height > 2 {
-            drawBackground(in: ctx, clippedTo: sel)
+            dim(outside: sel)
             ctx.setStrokeColor(NSColor.white.cgColor); ctx.setLineWidth(1.5)
             ctx.stroke(sel.insetBy(dx: 0.75, dy: 0.75))
             drawHandles(sel, ctx: ctx); drawSizeLabel(sel, showCoords: true)
         } else if let win = hoveredWindowRect, vm.activeTool == .region {
             let winView = toViewRect(win)   // convert Quartz screen coords → flipped view coords
-            drawBackground(in: ctx, clippedTo: winView)
+            dim(outside: winView)
             let p = NSBezierPath(rect: winView.insetBy(dx: 1, dy: 1))
             p.lineWidth = 2; NSColor.systemBlue.setStroke(); p.stroke()
             drawSizeLabel(winView)
+        } else {
+            dim(outside: nil)
         }
 
         // Collect spotlights separately — drawn as a unified overlay at end
@@ -159,6 +183,31 @@ final class OverlayView: NSView {
                 drawSelectionHandles(for: sel, in: ctx)
             }
         }
+
+        // Keep only what this frame actually drew, so the cache tracks what is
+        // on screen instead of accumulating a render per drag frame.
+        if effectCache.count != effectKeysThisFrame.count {
+            effectCache = effectCache.filter { effectKeysThisFrame.contains($0.key) }
+        }
+    }
+
+    /// Dims the view outside `hole`, or all of it when `hole` is nil.
+    ///
+    /// An even-odd path so the dim covers only the pixels that stay dark.
+    /// Filling the whole view and then painting the background back over the
+    /// selection drew the selected pixels three times, on every frame.
+    private func dim(outside hole: NSRect?) {
+        let shade = NSColor.black.withAlphaComponent(0.45)
+        guard let hole, !hole.isEmpty else {
+            shade.setFill()
+            NSBezierPath(rect: bounds).fill()
+            return
+        }
+        let path = NSBezierPath(rect: bounds)
+        path.append(NSBezierPath(rect: hole))
+        path.windingRule = .evenOdd
+        shade.setFill()
+        path.fill()
     }
 
     // CGImage from CIImage(cvPixelBuffer:) has row 0 at the BOTTOM (CG / CIImage convention).
@@ -184,6 +233,16 @@ final class OverlayView: NSView {
 
     private func drawBlur(_ ann: BlurAnnotation) {
         guard ann.rect.width > 4, ann.rect.height > 4 else { return }
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
+
+        let key = EffectKey(annotation: ObjectIdentifier(ann), rect: ann.rect,
+                            strength: ann.radius, scale: scaleFactor)
+        effectKeysThisFrame.insert(key)
+        if let cached = effectCache[key] {
+            drawCGImageFlipped(cached, in: ann.rect, ctx: ctx)
+            return
+        }
+
         // Expand source crop by radius so CIGaussianBlur has real neighbours at all edges.
         let r = ann.radius * scaleFactor
         let pr  = pixelRect(ann.rect)
@@ -202,13 +261,23 @@ final class OverlayView: NSView {
         let innerRect = CGRect(x: pr.minX - expanded.minX,
                                y: pr.minY - expanded.minY,
                                width: pr.width, height: pr.height)
-        guard let ctx = NSGraphicsContext.current?.cgContext,
-              let cg = OverlayViewModel.ciContext.createCGImage(out, from: innerRect) else { return }
+        guard let cg = OverlayViewModel.ciContext.createCGImage(out, from: innerRect) else { return }
+        effectCache[key] = cg
         drawCGImageFlipped(cg, in: ann.rect, ctx: ctx)
     }
 
     private func drawPixelate(_ ann: PixelateAnnotation) {
         guard ann.rect.width > 4, ann.rect.height > 4 else { return }
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
+
+        let key = EffectKey(annotation: ObjectIdentifier(ann), rect: ann.rect,
+                            strength: ann.pixelSize, scale: scaleFactor)
+        effectKeysThisFrame.insert(key)
+        if let cached = effectCache[key] {
+            drawCGImageFlipped(cached, in: ann.rect, ctx: ctx)
+            return
+        }
+
         let pr = pixelRect(ann.rect)
         let imgBounds = CGRect(x: 0, y: 0, width: CGFloat(baseCGImage.width),
                                height: CGFloat(baseCGImage.height))
@@ -220,8 +289,9 @@ final class OverlayView: NSView {
         f.setValue(max(ann.pixelSize * scaleFactor / 2, 2.0), forKey: kCIInputScaleKey)
         guard let out = f.outputImage else { return }
         let sz = CGSize(width: pr.width, height: pr.height)
-        guard let cg = OverlayViewModel.ciContext.createCGImage(out, from: CGRect(origin: .zero, size: sz)),
-              let ctx = NSGraphicsContext.current?.cgContext else { return }
+        guard let cg = OverlayViewModel.ciContext.createCGImage(
+            out, from: CGRect(origin: .zero, size: sz)) else { return }
+        effectCache[key] = cg
         drawCGImageFlipped(cg, in: ann.rect, ctx: ctx)
     }
 
