@@ -48,13 +48,13 @@ public struct SFTPUploader: Uploader, Sendable {
 
     // MARK: - Upload
 
-    public func upload(_ image: CGImage) async throws -> URL {
-        let filename = "reticle_\(Int(Date().timeIntervalSince1970)).png"
+    public func upload(_ image: EncodedImage) async throws -> URL {
+        let filename = "reticle_\(Int(Date().timeIntervalSince1970)).\(image.fileExtension)"
 
-        // 1. Write image to a temp PNG file.
+        // 1. Spill the already-encoded bytes to a temp file for curl to send.
         let tmpImage = FileManager.default.temporaryDirectory
             .appendingPathComponent(filename)
-        try encodePNG(image, to: tmpImage)
+        try image.data.write(to: tmpImage, options: .atomic)
         defer { try? FileManager.default.removeItem(at: tmpImage) }
 
         // 2. Write a temp .netrc for password auth.
@@ -126,15 +126,6 @@ public struct SFTPUploader: Uploader, Sendable {
         } else if !config.privateKeyPath.isEmpty {
             args += ["--key", config.privateKeyPath]
         }
-    }
-
-    private func encodePNG(_ image: CGImage, to url: URL) throws {
-        guard let dest = CGImageDestinationCreateWithURL(
-            url as CFURL, UTType.png.identifier as CFString, 1, nil)
-        else { throw SFTPError.imageEncodingFailed }
-        CGImageDestinationAddImage(dest, image, nil)
-        guard CGImageDestinationFinalize(dest)
-        else { throw SFTPError.imageEncodingFailed }
     }
 
     private func runProcess(_ executable: String,

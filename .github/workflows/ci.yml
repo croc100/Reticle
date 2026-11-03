@@ -4,8 +4,12 @@ on:
   push:
     branches: [main, develop]
     tags: ['v*']
+  # Every pull request, whatever it targets. Filtering on [main, develop]
+  # matched the *base* branch, so a pull request stacked on another branch got
+  # no build and no tests at all -- silently, which is the worst way to have no
+  # CI. Stacking is how a change that depends on an unmerged one stays
+  # reviewable, so it has to be covered.
   pull_request:
-    branches: [main, develop]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -16,6 +16,10 @@ final class CaptureHistoryManager: ObservableObject {
     /// Maximum number of entries to keep. Oldest are dropped first.
     var maxItems: Int = 200
 
+    /// Increments on every mutation so the writer can discard a snapshot that a
+    /// newer one has already overtaken.
+    private var saveGeneration = 0
+
     private let storageURL: URL = {
         let support = FileManager.default.urls(for: .applicationSupportDirectory,
                                                in: .userDomainMask)[0]
@@ -56,15 +60,50 @@ final class CaptureHistoryManager: ObservableObject {
         }
     }
 
+    /// Hands the current list to the writer and returns immediately.
+    ///
+    /// This used to encode and flush inline, on the main actor, on every
+    /// capture. With the cap at 200 entries and a JPEG thumbnail inlined in
+    /// each one, that is megabytes of JSON — base64 inflates the thumbnails by
+    /// a third — encoded and written to disk while the UI waits. The stall grew
+    /// as the history filled, so it was worst for the heaviest users.
     private func save() {
+        saveGeneration += 1
+        let snapshot = items
+        let url = storageURL
+        let generation = saveGeneration
+        Task.detached(priority: .utility) {
+            await historyStore.write(snapshot, to: url, generation: generation)
+        }
+    }
+}
+
+// MARK: - Writer
+
+/// Serialises history writes off the main actor.
+///
+/// An actor rather than a bare task so two captures in quick succession cannot
+/// interleave their writes. The body has no suspension points, so each call
+/// runs to completion before the next begins, and a snapshot that a newer one
+/// has already overtaken is dropped rather than rewriting stale state.
+private actor HistoryStore {
+    private var lastWritten = 0
+
+    func write(_ items: [HistoryItem], to url: URL, generation: Int) {
+        guard generation > lastWritten else { return }
+        lastWritten = generation
         do {
             let data = try JSONEncoder().encode(items)
-            try data.write(to: storageURL, options: .atomic)
+            try data.write(to: url, options: .atomic)
         } catch {
             print("[CaptureHistory] save error: \(error)")
         }
     }
 }
+
+/// File-scope so it is reachable from a detached task without the main-actor
+/// isolation a static member of the manager would carry.
+private let historyStore = HistoryStore()
 
 // MARK: - Thumbnail helper
 

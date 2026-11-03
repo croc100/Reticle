@@ -4,7 +4,10 @@ import Foundation
 
 /// Fetches the list of available displays and on-screen windows from ScreenCaptureKit.
 ///
-/// Results are fetched fresh on every call — SCK caches internally, so this is cheap.
+/// Every method here is a fresh `SCShareableContent` query, which enumerates the
+/// whole desktop and is the slowest step in a capture — not something to repeat
+/// in a loop.  Fetch once with ``fetchContent()`` and pass the resulting
+/// `SCDisplay`/`SCWindow` values on, rather than re-resolving them by ID.
 public actor DisplayProvider {
     public init() {}
 

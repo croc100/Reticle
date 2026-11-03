@@ -20,10 +20,16 @@ public actor Capturer {
 
     // MARK: - Public API
 
+    /// Captures according to `mode`, resolving the display or window by ID first.
+    ///
+    /// Resolution goes through `DisplayProvider`, which queries
+    /// `SCShareableContent` — the most expensive call in the capture path.  A
+    /// caller that already holds an `SCDisplay` should use ``capture(display:)``.
+    ///
+    /// Permission is not probed separately here: resolution already fails with
+    /// ``CaptureError/permissionDenied`` when access has not been granted, so a
+    /// prior `SCShareableContent.current` call only paid for the same answer twice.
     public func capture(mode: CaptureMode) async throws -> Screenshot {
-        guard await PermissionChecker.hasPermission() else {
-            throw CaptureError.permissionDenied
-        }
         switch mode {
         case .region(let rect):
             return try await captureRegion(rect)
@@ -71,9 +77,61 @@ public actor Capturer {
 
     private func captureFullScreen(displayID: CGDirectDisplayID) async throws -> Screenshot {
         let display = try await provider.display(withID: displayID)
+        return try await capture(display: display)
+    }
+
+    /// Captures a display the caller has already resolved.
+    ///
+    /// The overlay and window-picker flows list every display up front, so they
+    /// come through here: re-resolving each one by ID would repeat the
+    /// `SCShareableContent` query once per display for content already in hand.
+    public func capture(display: SCDisplay) async throws -> Screenshot {
         let scale = display.backingScaleFactor
         let image = try await streamCapture(display: display)
         return Screenshot(image: image, sourceRect: display.frame, scaleFactor: scale)
+    }
+
+    /// Captures one frozen frame per display, with the streams running concurrently.
+    ///
+    /// Stream setup is what a capture actually spends its time on:
+    /// `startCapture()` negotiates with the window server, and the first
+    /// complete frame only follows once that is done.  Taken one display at a
+    /// time, a three-monitor overlay paid that cost three times over before
+    /// anything appeared on screen — and the overlay cannot be shown until the
+    /// last display's background is in hand, so the whole wait is visible as
+    /// lag between the hotkey and the dimmed screen.
+    ///
+    /// The actor is reentrant, so the per-display calls release it at each
+    /// suspension point and their setups overlap; the wait becomes roughly that
+    /// of the slowest single display instead of the sum of all of them.  Peak
+    /// memory is unchanged, because the caller holds every frame at once anyway.
+    ///
+    /// Results come back in the order of `displays`, not the order they finished.
+    public func capture(displays: [SCDisplay]) async throws -> [Screenshot] {
+        // One display is the common case and a task group would only add
+        // scheduling to it.
+        guard displays.count > 1 else {
+            guard let display = displays.first else { return [] }
+            let shot = try await capture(display: display)
+            return [shot]
+        }
+
+        let boxed = UncheckedBox(value: displays)
+        var collected = [Screenshot?](repeating: nil, count: displays.count)
+
+        try await withThrowingTaskGroup(of: (Int, Screenshot).self) { group in
+            for index in displays.indices {
+                group.addTask { [self] in
+                    let shot = try await capture(display: boxed.value[index])
+                    return (index, shot)
+                }
+            }
+            for try await (index, shot) in group {
+                collected[index] = shot
+            }
+        }
+
+        return collected.compactMap { $0 }
     }
 
     // MARK: - SCStream helpers
@@ -156,6 +214,18 @@ public actor Capturer {
         }
         return cropped
     }
+}
+
+// MARK: - Sendable bridging
+
+/// Carries a non-`Sendable` ScreenCaptureKit value into a child task.
+///
+/// `SCDisplay` is a read-only description of a connected display — an ID, a
+/// frame and a pixel size — and ScreenCaptureKit hands out the same instances
+/// to every caller.  Nothing here mutates one; each child task only reads it to
+/// build its own `SCContentFilter`.
+private struct UncheckedBox<Value>: @unchecked Sendable {
+    let value: Value
 }
 
 // MARK: - Timeout helper

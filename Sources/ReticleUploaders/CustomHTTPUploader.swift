@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 
-/// Uploads a CGImage to any HTTP endpoint.
+/// Uploads an encoded screenshot to any HTTP endpoint.
 ///
 /// Supports multipart/form-data (when ``fileFormField`` is set) or a raw
 /// binary PUT body.  After a successful response the URL is extracted from
@@ -61,11 +61,7 @@ public struct CustomHTTPUploader: Uploader, Sendable {
 
     // MARK: - Uploader
 
-    public func upload(_ image: CGImage) async throws -> URL {
-        guard let pngData = pngData(from: image) else {
-            throw UploadError.encodingFailed
-        }
-
+    public func upload(_ image: EncodedImage) async throws -> URL {
         guard let endpointURL = URL(string: config.url), !config.url.isEmpty else {
             throw UploadError.encodingFailed
         }
@@ -80,14 +76,14 @@ public struct CustomHTTPUploader: Uploader, Sendable {
 
         if config.fileFormField.isEmpty {
             // Raw binary body
-            request.setValue("image/png", forHTTPHeaderField: "Content-Type")
-            request.httpBody = pngData
+            request.setValue(image.contentType, forHTTPHeaderField: "Content-Type")
+            request.httpBody = image.data
         } else {
             // Multipart/form-data
             let boundary = "Boundary-\(UUID().uuidString)"
             request.setValue("multipart/form-data; boundary=\(boundary)",
                              forHTTPHeaderField: "Content-Type")
-            request.httpBody = Self.multipartBody(data: pngData,
+            request.httpBody = Self.multipartBody(data: image.data,
                                                   field: config.fileFormField,
                                                   filename: config.filename,
                                                   boundary: boundary)
@@ -167,13 +163,4 @@ public struct CustomHTTPUploader: Uploader, Sendable {
 
     // MARK: - Image encoding
 
-    private func pngData(from image: CGImage) -> Data? {
-        let mutable = NSMutableData()
-        guard let dest = CGImageDestinationCreateWithData(mutable, "public.png" as CFString, 1, nil) else {
-            return nil
-        }
-        CGImageDestinationAddImage(dest, image, nil)
-        guard CGImageDestinationFinalize(dest) else { return nil }
-        return mutable as Data
-    }
 }

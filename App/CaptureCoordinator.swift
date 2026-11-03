@@ -9,6 +9,7 @@ import ReticlePipeline
 import ReticleUploaders
 import ReticleVision
 import Foundation
+import ScreenCaptureKit
 
 /// Top-level coordinator — owns the full ShareX-style capture flow.
 @MainActor
@@ -52,11 +53,7 @@ final class CaptureCoordinator: ObservableObject {
             let (displays, scWindows) = try await provider.fetchContent()
             guard !displays.isEmpty else { return }
 
-            var backgrounds: [(frame: CGRect, image: CGImage)] = []
-            for display in displays {
-                let shot = try await capturer.capture(mode: .fullScreen(displayID: display.displayID))
-                backgrounds.append((frame: display.frame, image: shot.image))
-            }
+            let backgrounds = try await captureBackgrounds(for: displays)
 
             let result = await overlay.show(backgrounds: backgrounds, scWindows: scWindows)
             guard case .captured(let image, let sourceRect, let scale) = result else { return }
@@ -164,11 +161,7 @@ final class CaptureCoordinator: ObservableObject {
             let (displays, scWindows) = try await provider.fetchContent()
             guard !displays.isEmpty else { return }
 
-            var backgrounds: [(frame: CGRect, image: CGImage)] = []
-            for display in displays {
-                let shot = try await capturer.capture(mode: .fullScreen(displayID: display.displayID))
-                backgrounds.append((frame: display.frame, image: shot.image))
-            }
+            let backgrounds = try await captureBackgrounds(for: displays)
 
             let result = await overlay.show(backgrounds: backgrounds, scWindows: scWindows, windowPickerMode: true)
             guard case .captured(let image, let sourceRect, let scale) = result else { return }
@@ -176,6 +169,27 @@ final class CaptureCoordinator: ObservableObject {
             Defaults[.lastCaptureRect] = StoredRect(sourceRect)
             await finalize(image: image, sourceRect: sourceRect, scaleFactor: scale, profileDestinations: profileDestinations)
         } catch { showError(error) }
+    }
+
+    // MARK: - Overlay backgrounds
+
+    /// Grabs one frozen frame per display for the overlay to draw on.
+    ///
+    /// Takes displays the caller already fetched, so the whole flow costs a
+    /// single `SCShareableContent` query.  Going through `capture(mode:)` here
+    /// instead cost two more per display — a permission probe and a second
+    /// content fetch to look up a display we were already holding.
+    ///
+    /// The displays are captured concurrently; the overlay cannot appear until
+    /// the last background is in hand, so doing them in turn put the sum of
+    /// every display's stream setup between the hotkey and anything on screen.
+    private func captureBackgrounds(
+        for displays: [SCDisplay]
+    ) async throws -> [(frame: CGRect, image: CGImage)] {
+        let shots = try await capturer.capture(displays: displays)
+        // `sourceRect` is the display frame the shot was taken from, so the
+        // pairing survives even if the list ever comes back short.
+        return shots.map { (frame: $0.sourceRect, image: $0.image) }
     }
 
     // MARK: - Scroll Capture
@@ -344,6 +358,19 @@ final class CaptureCoordinator: ObservableObject {
             // Upload tasks — all share the same completion handler.
             let openAfterUpload = optSet.contains(.openUploadedURL)
 
+            // One encode shared by every destination.  Each uploader used to
+            // encode the frame itself, so three destinations meant three full
+            // PNG encodes of the same multi-megapixel image, running at once.
+            // Detached keeps the encode off the main actor; the shared Task
+            // means the destinations await one result instead of racing.
+            let uploadOptions: Set<AfterCaptureOption> = [
+                .uploadToImgur, .uploadToS3, .uploadCustomHTTP, .uploadToSFTP,
+            ]
+            let encoded: Task<EncodedImage, Error>? =
+                optSet.isDisjoint(with: uploadOptions)
+                ? nil
+                : Task.detached { try EncodedImage.png(from: finalImage) }
+
             // Imgur upload
             if optSet.contains(.uploadToImgur) {
                 let clientID = Defaults[.imgurClientID]
@@ -353,7 +380,9 @@ final class CaptureCoordinator: ObservableObject {
                 } else {
                     Task {
                         do {
-                            let url = try await ImgurUploader(clientID: clientID).upload(finalImage)
+                            guard let encoded else { return }
+                            let payload = try await encoded.value
+                            let url = try await ImgurUploader(clientID: clientID).upload(payload)
                             handleUploadedURL(url, openInBrowser: openAfterUpload)
                         } catch { await MainActor.run { self.showError(error) } }
                     }
@@ -380,7 +409,9 @@ final class CaptureCoordinator: ObservableObject {
                     )
                     Task {
                         do {
-                            let url = try await S3Uploader(config: s3Config).upload(finalImage)
+                            guard let encoded else { return }
+                            let payload = try await encoded.value
+                            let url = try await S3Uploader(config: s3Config).upload(payload)
                             handleUploadedURL(url, openInBrowser: openAfterUpload)
                         } catch { await MainActor.run { self.showError(error) } }
                     }
@@ -409,7 +440,9 @@ final class CaptureCoordinator: ObservableObject {
                     )
                     Task {
                         do {
-                            let url = try await CustomHTTPUploader(config: httpConfig).upload(finalImage)
+                            guard let encoded else { return }
+                            let payload = try await encoded.value
+                            let url = try await CustomHTTPUploader(config: httpConfig).upload(payload)
                             handleUploadedURL(url, openInBrowser: openAfterUpload)
                         } catch { await MainActor.run { self.showError(error) } }
                     }
@@ -434,7 +467,9 @@ final class CaptureCoordinator: ObservableObject {
                     )
                     Task {
                         do {
-                            let url = try await SFTPUploader(config: sftpConfig).upload(finalImage)
+                            guard let encoded else { return }
+                            let payload = try await encoded.value
+                            let url = try await SFTPUploader(config: sftpConfig).upload(payload)
                             handleUploadedURL(url, openInBrowser: openAfterUpload)
                         } catch { await MainActor.run { self.showError(error) } }
                     }

@@ -3,8 +3,23 @@ import Foundation
 
 /// Common interface for all upload destinations.
 public protocol Uploader: Sendable {
-    /// Uploads the given image and returns the public URL.
-    func upload(_ image: CGImage) async throws -> URL
+    /// Uploads an already-encoded image and returns the public URL.
+    ///
+    /// Destinations take bytes rather than a `CGImage` so that a capture bound
+    /// for several of them is encoded once — see ``EncodedImage``.
+    func upload(_ image: EncodedImage) async throws -> URL
+}
+
+public extension Uploader {
+    /// Encodes `image` as PNG and uploads it.
+    ///
+    /// Convenience for a single destination. A caller sending one capture to
+    /// several destinations should encode once with ``EncodedImage/png(from:)``
+    /// and hand the result to each, rather than calling this per destination.
+    func upload(_ image: CGImage) async throws -> URL {
+        let encoded = try EncodedImage.png(from: image)
+        return try await upload(encoded)
+    }
 }
 
 public enum UploadError: Error {
