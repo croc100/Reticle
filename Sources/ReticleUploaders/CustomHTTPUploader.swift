@@ -87,10 +87,10 @@ public struct CustomHTTPUploader: Uploader, Sendable {
             let boundary = "Boundary-\(UUID().uuidString)"
             request.setValue("multipart/form-data; boundary=\(boundary)",
                              forHTTPHeaderField: "Content-Type")
-            request.httpBody = multipartBody(data: pngData,
-                                             field: config.fileFormField,
-                                             filename: config.filename,
-                                             boundary: boundary)
+            request.httpBody = Self.multipartBody(data: pngData,
+                                                  field: config.fileFormField,
+                                                  filename: config.filename,
+                                                  boundary: boundary)
         }
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -104,7 +104,7 @@ public struct CustomHTTPUploader: Uploader, Sendable {
         }
 
         // Extract URL from response
-        return try extractURL(from: data, path: config.responseURLPath)
+        return try Self.extractURL(from: data, path: config.responseURLPath)
     }
 
     // MARK: - Response parsing
@@ -113,7 +113,7 @@ public struct CustomHTTPUploader: Uploader, Sendable {
     ///
     /// If `path` is empty the entire response body (trimmed) is used.
     /// The path supports integer indices for arrays: `"attachments.0.proxy_url"`.
-    private func extractURL(from data: Data, path: String) throws -> URL {
+    static func extractURL(from data: Data, path: String) throws -> URL {
         if path.isEmpty {
             // Treat the whole body as the URL
             let raw = (String(data: data, encoding: .utf8) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -135,7 +135,8 @@ public struct CustomHTTPUploader: Uploader, Sendable {
         for component in components {
             if let dict = current as? [String: Any], let next = dict[component] {
                 current = next
-            } else if let array = current as? [Any], let idx = Int(component), idx < array.count {
+            } else if let array = current as? [Any], let idx = Int(component),
+                      idx >= 0, idx < array.count {
                 current = array[idx]
             } else {
                 throw UploadError.serverError(statusCode: 0,
@@ -143,7 +144,8 @@ public struct CustomHTTPUploader: Uploader, Sendable {
             }
         }
 
-        guard let urlString = current as? String, let url = URL(string: urlString) else {
+        guard let urlString = current as? String,
+              let url = URL(string: urlString), url.scheme != nil else {
             throw UploadError.serverError(statusCode: 0,
                 body: "Value at path '\(path)' is not a URL string")
         }
@@ -152,7 +154,7 @@ public struct CustomHTTPUploader: Uploader, Sendable {
 
     // MARK: - Multipart body
 
-    private func multipartBody(data: Data, field: String, filename: String, boundary: String) -> Data {
+    static func multipartBody(data: Data, field: String, filename: String, boundary: String) -> Data {
         var body = Data()
         let crlf = "\r\n"
         body.append(Data("--\(boundary)\(crlf)".utf8))
