@@ -69,7 +69,8 @@ public final class ScrollCapturer {
             try await Task.sleep(nanoseconds: settleDelay)
 
             let shot = try await capturer.capture(mode: .window(CGWindowID(window.windowID)))
-            let overlap = findOverlap(prev: frames.last!, curr: shot.image)
+            guard let previous = frames.last else { break }
+            let overlap = findOverlap(prev: previous, curr: shot.image)
             let newH    = shot.image.height - overlap
 
             if newH < 4 {
@@ -107,14 +108,22 @@ public final class ScrollCapturer {
     /// Algorithm:
     ///   1. Render the bottom `refH` rows of `prev` into a small bitmap context (refCtx).
     ///   2. Render a narrow vertical slab of `curr` into another bitmap context (slabCtx).
-    ///   3. Both contexts store rows bottom-up (CGContext y=0 = bottom of image).
-    ///      The reference corresponds to slab memory position `slab_start = D` where D
-    ///      is the scroll distance in pixels.
-    ///   4. Scan slab from y=1 upward; first match gives overlap = h - y.
+    ///   3. A `CGBitmapContext`'s buffer is stored **top-down**: byte row 0 is the
+    ///      image's top row.  It has to be, because `makeImage()` hands that buffer
+    ///      straight to a `CGImage`, and a `CGImage` always reads row 0 as the top.
+    ///   4. Find the byte row `y` of the slab where the reference strip sits.
+    ///      Matching there means `curr` row `y + k` holds `prev` row
+    ///      `h - refH + k`, so the page moved by `h - refH - y` pixels and the
+    ///      rows the two frames share number `refH + y`.
     ///
+    /// Both frames must be the same size — they come from one window through one
+    /// capture path.  A resize mid-scroll gives up and returns 0, which costs a
+    /// duplicated strip rather than a silently wrong one.
     func findOverlap(prev: CGImage, curr: CGImage) -> Int {
-        let w    = min(prev.width, curr.width)
-        let h    = min(prev.height, curr.height)
+        guard prev.width == curr.width, prev.height == curr.height else { return 0 }
+
+        let w    = curr.width
+        let h    = curr.height
         let refH = 32                           // reference strip height in pixels
         let sw   = min(w, 256)                  // sample column width
         let cx   = (w - sw) / 2                 // centre the sample column
@@ -139,26 +148,39 @@ public final class ScrollCapturer {
         guard let slabData = slabCtx.data else { return 0 }
         let slabBpr = slabCtx.bytesPerRow
 
-        // --- Scan slab (y=1 → y=h-refH) looking for reference strip ---
-        //
-        // CGContext memory layout: byte row 0 = bottom of image, row (h-1) = top.
-        // At memory position y in slab: content matches prev bottom when y == D (scroll dist).
-        // → overlap = h - y.
-        //
-        for y in 1...(h - refH) {
-            var ok = true
-            outer: for k in 0..<refH {
+        /// Whether the reference strip sits at byte row `y` of the slab.
+        ///
+        /// Every fourth pixel is sampled, and all three colour channels of it.
+        /// Stepping a flat 16 bytes compared one channel only — blue, as it
+        /// happens, since the context is `byteOrder32Little` — so any content
+        /// with a uniform blue channel matched everywhere.
+        func matches(at y: Int) -> Bool {
+            for k in 0..<refH {
                 let refOff  = k * refBpr
                 let slabOff = (y + k) * slabBpr
                 var col = 0
                 while col < sw * 4 {
-                    let a = refData.load(fromByteOffset: refOff + col, as: UInt8.self)
-                    let b = slabData.load(fromByteOffset: slabOff + col, as: UInt8.self)
-                    if abs(Int(a) - Int(b)) > 10 { ok = false; break outer }
+                    for channel in 0..<3 {
+                        let a = refData.load(fromByteOffset: refOff + col + channel, as: UInt8.self)
+                        let b = slabData.load(fromByteOffset: slabOff + col + channel, as: UInt8.self)
+                        if abs(Int(a) - Int(b)) > 10 { return false }
+                    }
                     col += 16       // sample every 4 pixels
                 }
             }
-            if ok { return h - y }
+            return true
+        }
+
+        // The no-scroll case first.  It is the one the caller leans on to know
+        // when to stop, and an ascending scan can match a flat region higher up
+        // and report a smaller overlap — which reads as progress that is not
+        // there, so the scroll runs to `maxSteps` stitching duplicates.
+        if matches(at: h - refH) { return h }
+
+        // Otherwise the lowest matching row wins, i.e. the smallest overlap.
+        // A false positive then duplicates a strip instead of dropping one.
+        for y in 0..<(h - refH) where matches(at: y) {
+            return refH + y
         }
         return 0
     }
@@ -169,37 +191,51 @@ public final class ScrollCapturer {
     ///
     /// Frame 0 contributes its full height.  Each subsequent frame contributes
     /// only the unique bottom strip (rows `overlap..<h` in CGImage space).
-    private func stitch(_ frames: [CGImage]) throws -> CGImage {
+    ///
+    /// Not private so the tests can drive it with synthetic frames: everything
+    /// here is arithmetic over coordinate spaces, which is exactly the part
+    /// that was wrong and exactly the part that needs no screen to check.
+    func stitch(_ frames: [CGImage]) throws -> CGImage {
         guard !frames.isEmpty else { throw ScrollCaptureError.noFrames }
         guard frames.count > 1 else { return frames[0] }
 
-        let w = frames[0].width
-
-        // Compute unique strip for each frame after the first.
-        struct Strip { let img: CGImage; let h: Int }
-        var strips: [Strip] = [Strip(img: frames[0], h: frames[0].height)]
-
-        for i in 1..<frames.count {
-            let overlap = findOverlap(prev: frames[i - 1], curr: frames[i])
-            let newH    = frames[i].height - overlap
-            guard newH > 0 else { continue }
-            // Crop rows [overlap..<frames[i].height] in CGImage space = unique bottom strip.
-            if let cropped = frames[i].cropping(to: CGRect(x: 0, y: overlap, width: w, height: newH)) {
-                strips.append(Strip(img: cropped, h: newH))
-            }
+        // The narrowest frame, not the first one's width: a window resized
+        // mid-scroll makes `cropping(to:)` return nil for a width the frame
+        // does not have, and the strip was then dropped without a word.
+        guard let w = frames.map(\.width).min(), w > 0 else {
+            throw ScrollCaptureError.noFrames
         }
+
+        struct Strip { let img: CGImage; let h: Int }
+        var strips: [Strip] = []
+
+        for (index, frame) in frames.enumerated() {
+            // Frame 0 keeps all of itself; the rest keep what is new.
+            let overlap = index == 0 ? 0 : findOverlap(prev: frames[index - 1], curr: frame)
+            let newH    = frame.height - overlap
+            guard newH > 0 else { continue }
+            // Crop rows [overlap..<frame.height] in CGImage space = unique bottom strip.
+            guard let cropped = frame.cropping(
+                to: CGRect(x: 0, y: overlap, width: w, height: newH)) else { continue }
+            strips.append(Strip(img: cropped, h: newH))
+        }
+
+        guard !strips.isEmpty else { throw ScrollCaptureError.noFrames }
 
         let totalH = strips.reduce(0) { $0 + $1.h }
         guard let ctx = bitmapCtx(w: w, h: totalH) else { throw ScrollCaptureError.contextFailed }
 
-        // Flip the context so y=0 is at the top (screen orientation).
-        ctx.translateBy(x: 0, y: CGFloat(totalH))
-        ctx.scaleBy(x: 1, y: -1)
-
-        var y = 0
+        // No CTM flip.  Flipping the context flips the *content* of every image
+        // drawn into it, so each strip came out mirrored top-to-bottom — right
+        // order, upside-down contents.  Every other bitmap draw in this project
+        // leaves the CTM alone; this was the one that did not.
+        //
+        // So place the strips from the top down in a y-up context instead: the
+        // first strip, which is the top of the page, sits highest.
+        var top = totalH
         for strip in strips {
-            ctx.draw(strip.img, in: CGRect(x: 0, y: y, width: w, height: strip.h))
-            y += strip.h
+            top -= strip.h
+            ctx.draw(strip.img, in: CGRect(x: 0, y: top, width: w, height: strip.h))
         }
 
         guard let result = ctx.makeImage() else { throw ScrollCaptureError.contextFailed }
