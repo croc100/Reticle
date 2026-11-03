@@ -42,6 +42,7 @@ final class CaptureModeTests: XCTestCase {
             .invalidFrame,
             .timeout,
             .streamFailed(underlying: NSError(domain: "test", code: 0)),
+            .frameAlreadyConsumed,
         ]
         for error in errors {
             XCTAssertNotNil(error.errorDescription, "errorDescription should not be nil for \(error)")

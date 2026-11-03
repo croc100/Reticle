@@ -6,6 +6,8 @@ public enum CaptureError: Error, LocalizedError {
     case invalidFrame
     case timeout
     case streamFailed(underlying: Error)
+    /// A second task waited on a frame that had already been handed over.
+    case frameAlreadyConsumed
 
     public var errorDescription: String? {
         switch self {
@@ -19,6 +21,8 @@ public enum CaptureError: Error, LocalizedError {
             return "Timed out waiting for the first frame from ScreenCaptureKit."
         case .streamFailed(let error):
             return "The capture stream stopped unexpectedly: \(error.localizedDescription)"
+        case .frameAlreadyConsumed:
+            return "The captured frame had already been handed to another task."
         }
     }
 }
