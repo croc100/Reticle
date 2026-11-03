@@ -20,10 +20,16 @@ public actor Capturer {
 
     // MARK: - Public API
 
+    /// Captures according to `mode`, resolving the display or window by ID first.
+    ///
+    /// Resolution goes through `DisplayProvider`, which queries
+    /// `SCShareableContent` — the most expensive call in the capture path.  A
+    /// caller that already holds an `SCDisplay` should use ``capture(display:)``.
+    ///
+    /// Permission is not probed separately here: resolution already fails with
+    /// ``CaptureError/permissionDenied`` when access has not been granted, so a
+    /// prior `SCShareableContent.current` call only paid for the same answer twice.
     public func capture(mode: CaptureMode) async throws -> Screenshot {
-        guard await PermissionChecker.hasPermission() else {
-            throw CaptureError.permissionDenied
-        }
         switch mode {
         case .region(let rect):
             return try await captureRegion(rect)
@@ -71,6 +77,15 @@ public actor Capturer {
 
     private func captureFullScreen(displayID: CGDirectDisplayID) async throws -> Screenshot {
         let display = try await provider.display(withID: displayID)
+        return try await capture(display: display)
+    }
+
+    /// Captures a display the caller has already resolved.
+    ///
+    /// The overlay and window-picker flows list every display up front, so they
+    /// come through here: re-resolving each one by ID would repeat the
+    /// `SCShareableContent` query once per display for content already in hand.
+    public func capture(display: SCDisplay) async throws -> Screenshot {
         let scale = display.backingScaleFactor
         let image = try await streamCapture(display: display)
         return Screenshot(image: image, sourceRect: display.frame, scaleFactor: scale)

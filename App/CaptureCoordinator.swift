@@ -9,6 +9,7 @@ import ReticlePipeline
 import ReticleUploaders
 import ReticleVision
 import Foundation
+import ScreenCaptureKit
 
 /// Top-level coordinator — owns the full ShareX-style capture flow.
 @MainActor
@@ -52,11 +53,7 @@ final class CaptureCoordinator: ObservableObject {
             let (displays, scWindows) = try await provider.fetchContent()
             guard !displays.isEmpty else { return }
 
-            var backgrounds: [(frame: CGRect, image: CGImage)] = []
-            for display in displays {
-                let shot = try await capturer.capture(mode: .fullScreen(displayID: display.displayID))
-                backgrounds.append((frame: display.frame, image: shot.image))
-            }
+            let backgrounds = try await captureBackgrounds(for: displays)
 
             let result = await overlay.show(backgrounds: backgrounds, scWindows: scWindows)
             guard case .captured(let image, let sourceRect, let scale) = result else { return }
@@ -164,11 +161,7 @@ final class CaptureCoordinator: ObservableObject {
             let (displays, scWindows) = try await provider.fetchContent()
             guard !displays.isEmpty else { return }
 
-            var backgrounds: [(frame: CGRect, image: CGImage)] = []
-            for display in displays {
-                let shot = try await capturer.capture(mode: .fullScreen(displayID: display.displayID))
-                backgrounds.append((frame: display.frame, image: shot.image))
-            }
+            let backgrounds = try await captureBackgrounds(for: displays)
 
             let result = await overlay.show(backgrounds: backgrounds, scWindows: scWindows, windowPickerMode: true)
             guard case .captured(let image, let sourceRect, let scale) = result else { return }
@@ -176,6 +169,26 @@ final class CaptureCoordinator: ObservableObject {
             Defaults[.lastCaptureRect] = StoredRect(sourceRect)
             await finalize(image: image, sourceRect: sourceRect, scaleFactor: scale, profileDestinations: profileDestinations)
         } catch { showError(error) }
+    }
+
+    // MARK: - Overlay backgrounds
+
+    /// Grabs one frozen frame per display for the overlay to draw on.
+    ///
+    /// Takes displays the caller already fetched, so the whole flow costs a
+    /// single `SCShareableContent` query.  Going through `capture(mode:)` here
+    /// instead cost two more per display — a permission probe and a second
+    /// content fetch to look up a display we were already holding.
+    private func captureBackgrounds(
+        for displays: [SCDisplay]
+    ) async throws -> [(frame: CGRect, image: CGImage)] {
+        var backgrounds: [(frame: CGRect, image: CGImage)] = []
+        backgrounds.reserveCapacity(displays.count)
+        for display in displays {
+            let shot = try await capturer.capture(display: display)
+            backgrounds.append((frame: display.frame, image: shot.image))
+        }
+        return backgrounds
     }
 
     // MARK: - Scroll Capture
