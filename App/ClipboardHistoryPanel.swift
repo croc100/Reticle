@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import ReticleCore
 
 // MARK: - ClipboardHistoryPanel
 
@@ -53,7 +54,7 @@ private struct ClipboardHistoryView: View {
 
     @State private var searchText = ""
 
-    private var filtered: [ClipboardItem] {
+    private var filtered: [ClipboardEntry] {
         guard !searchText.isEmpty else { return manager.items }
         return manager.items.filter { $0.displayText.localizedCaseInsensitiveContains(searchText) }
     }
@@ -86,9 +87,9 @@ private struct ClipboardHistoryView: View {
                 }
                 Spacer()
             } else {
-                List(filtered) { item in
-                    ClipboardRowView(item: item) {
-                        ClipboardHistoryManager.shared.copyToClipboard(item)
+                List(filtered) { entry in
+                    ClipboardRowView(entry: entry) {
+                        ClipboardHistoryManager.shared.copyToClipboard(entry)
                     }
                 }
                 .listStyle(.plain)
@@ -114,7 +115,7 @@ private struct ClipboardHistoryView: View {
 // MARK: - ClipboardRowView
 
 private struct ClipboardRowView: View {
-    let item: ClipboardItem
+    let entry: ClipboardEntry
     let onCopy: () -> Void
 
     @State private var isHovered = false
@@ -123,12 +124,15 @@ private struct ClipboardRowView: View {
         HStack(spacing: 8) {
             // Icon / thumbnail
             Group {
-                switch item {
+                switch entry {
                 case .text:
                     Image(systemName: "doc.text").frame(width: 32, height: 32)
                         .foregroundStyle(.secondary)
-                case .image(let img):
-                    Image(nsImage: img)
+                case .image(let image):
+                    // The row-sized preview, not the full frame: this List used
+                    // to hand SwiftUI up to thirty multi-megapixel images and
+                    // ask it to resample every one of them down to 32 points.
+                    Image(decorative: image.thumbnail, scale: 2)
                         .resizable().scaledToFill()
                         .frame(width: 32, height: 32)
                         .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -137,10 +141,10 @@ private struct ClipboardRowView: View {
 
             // Content
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.displayText)
+                Text(entry.displayText)
                     .lineLimit(2)
                     .font(.system(size: 12))
-                Text(typeLabel)
+                Text(entry.typeLabel)
                     .font(.caption2).foregroundStyle(.tertiary)
             }
 
@@ -159,12 +163,5 @@ private struct ClipboardRowView: View {
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .onTapGesture(count: 2) { onCopy() }
-    }
-
-    private var typeLabel: String {
-        switch item {
-        case .text(let s): return "\(s.count) characters"
-        case .image(let i): return "Image \(Int(i.size.width))×\(Int(i.size.height))"
-        }
     }
 }

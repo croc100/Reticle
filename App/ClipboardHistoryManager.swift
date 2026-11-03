@@ -1,26 +1,8 @@
 import AppKit
 import Combine
-
-// MARK: - ClipboardItem
-
-enum ClipboardItem: Identifiable {
-    case text(String)
-    case image(NSImage)
-
-    var id: String {
-        switch self {
-        case .text(let s):   return "t-\(s.prefix(40))"
-        case .image(let i):  return "i-\(ObjectIdentifier(i).hashValue)"
-        }
-    }
-
-    var displayText: String {
-        switch self {
-        case .text(let s):  return s.prefix(120).replacingOccurrences(of: "\n", with: " ")
-        case .image(let i): return "Image \(Int(i.size.width))×\(Int(i.size.height))"
-        }
-    }
-}
+import CoreGraphics
+import ImageIO
+import ReticleCore
 
 // MARK: - ClipboardHistoryManager
 
@@ -30,11 +12,15 @@ final class ClipboardHistoryManager: ObservableObject {
 
     static let shared = ClipboardHistoryManager()
 
-    @Published private(set) var items: [ClipboardItem] = []
+    @Published private(set) var items: [ClipboardEntry] = []
 
     private var lastChangeCount: Int = NSPasteboard.general.changeCount
     private var timer: Timer?
     private let maxItems = 30
+
+    /// Longest side of the preview kept for the history row, in pixels.
+    /// The row draws at 32 points, so this covers a 2x display.
+    private let thumbnailMaxPixelSize = 64
 
     private init() { startPolling() }
 
@@ -49,40 +35,82 @@ final class ClipboardHistoryManager: ObservableObject {
     }
 
     private func checkPasteboard() {
-        let pb = NSPasteboard.general
-        guard pb.changeCount != lastChangeCount else { return }
-        lastChangeCount = pb.changeCount
+        let pasteboard = NSPasteboard.general
+        guard pasteboard.changeCount != lastChangeCount else { return }
+        lastChangeCount = pasteboard.changeCount
 
-        if let str = pb.string(forType: .string), !str.isEmpty {
-            push(.text(str))
-        } else if let data = pb.data(forType: .tiff),
-                  let img = NSImage(data: data) {
-            push(.image(img))
-        } else if let data = pb.data(forType: .png),
-                  let img = NSImage(data: data) {
-            push(.image(img))
+        if let string = pasteboard.string(forType: .string), !string.isEmpty {
+            push(.text(string))
+            return
+        }
+
+        // PNG before TIFF.  Both are usually on the pasteboard, and TIFF is the
+        // uncompressed one - roughly 80 MB for a full-screen Retina capture
+        // against a couple of megabytes for the same frame as PNG.  Asking for
+        // TIFF first also forces any lazily-provided TIFF to be generated,
+        // which is exactly the cost `ClipboardOutput` arranges to avoid.
+        for type in [NSPasteboard.PasteboardType.png, .tiff] {
+            guard let data = pasteboard.data(forType: type),
+                  let entry = makeImageEntry(data: data, type: type) else { continue }
+            push(entry)
+            return
         }
     }
 
-    private func push(_ item: ClipboardItem) {
-        // Deduplicate by id
-        items.removeAll { $0.id == item.id }
-        items.insert(item, at: 0)
+    /// Builds an entry without ever decoding the image at full size.
+    ///
+    /// The dimensions come from the image's own metadata and the preview is
+    /// decoded straight to row size, so a 20-megapixel screenshot costs the
+    /// bytes it arrived as plus a 64-pixel thumbnail - not 80 MB of bitmap.
+    private func makeImageEntry(
+        data: Data,
+        type: NSPasteboard.PasteboardType
+    ) -> ClipboardEntry? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        let width  = properties?[kCGImagePropertyPixelWidth]  as? Int ?? 0
+        let height = properties?[kCGImagePropertyPixelHeight] as? Int ?? 0
+
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: thumbnailMaxPixelSize,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+        ]
+        guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(
+            source, 0, options as CFDictionary
+        ) else { return nil }
+
+        return .image(ClipboardImage(
+            data: data,
+            type: type.rawValue,
+            pixelWidth: width,
+            pixelHeight: height,
+            thumbnail: thumbnail))
+    }
+
+    private func push(_ entry: ClipboardEntry) {
+        // Deduplicate by content.
+        items.removeAll { $0.id == entry.id }
+        items.insert(entry, at: 0)
         if items.count > maxItems { items = Array(items.prefix(maxItems)) }
     }
 
     // MARK: - Copy back
 
-    func copyToClipboard(_ item: ClipboardItem) {
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        switch item {
-        case .text(let s):   pb.setString(s, forType: .string)
-        case .image(let i):
-            if let tiff = i.tiffRepresentation { pb.setData(tiff, forType: .tiff) }
+    func copyToClipboard(_ entry: ClipboardEntry) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        switch entry {
+        case .text(let string):
+            pasteboard.setString(string, forType: .string)
+        case .image(let image):
+            // The bytes exactly as they arrived, in the type they arrived as:
+            // no re-encode, and nothing lost on the way back.
+            pasteboard.setData(image.data, forType: NSPasteboard.PasteboardType(image.type))
         }
-        // Don't push back — it would show as a duplicate
-        lastChangeCount = pb.changeCount
+        // Don't push back - it would show as a duplicate
+        lastChangeCount = pasteboard.changeCount
     }
 
     func clear() { items.removeAll() }
