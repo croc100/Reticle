@@ -167,5 +167,12 @@ let package = Package(
             dependencies: ["ReticleCapture"],
             path: "Tests/ReticleCaptureTests"
         ),
+        // SigV4 signing, object-key encoding and the dot-path response parser —
+        // all pure logic, so none of this needs a bucket or a network.
+        .testTarget(
+            name: "ReticleUploadersTests",
+            dependencies: ["ReticleUploaders"],
+            path: "Tests/ReticleUploadersTests"
+        ),
     ]
 )

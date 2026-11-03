@@ -1,5 +1,4 @@
 import CoreGraphics
-import CryptoKit
 import Foundation
 import ImageIO
 
@@ -24,7 +23,7 @@ public struct S3Uploader: Uploader, Sendable {
         public var secretAccessKey: String
         /// Optional key prefix (folder), e.g. "screenshots/".  No leading slash.
         public var keyPrefix: String
-        /// If non-empty, the public link is formed as "\(publicURLTemplate){key}".
+        /// If non-empty, the public link is the template with the key appended.
         /// Useful for CloudFront.  Leave empty to use the standard S3 HTTPS URL.
         public var publicURLTemplate: String
         /// Use path-style endpoint ("s3.amazonaws.com/bucket/key") instead of
@@ -64,202 +63,154 @@ public struct S3Uploader: Uploader, Sendable {
             throw UploadError.encodingFailed
         }
 
-        // Generate a date-sortable filename
-        let filename = objectFilename()
-        let key = config.keyPrefix + filename
+        let key = config.keyPrefix + objectFilename()
+        let request = try signedRequest(
+            method: "PUT", key: key, body: pngData, contentType: "image/png", now: Date()
+        )
 
-        let request = try buildSignedRequest(key: key, body: pngData)
-        let (_, response) = try await URLSession.shared.data(for: request)
-
-        guard let http = response as? HTTPURLResponse else {
-            throw UploadError.networkError(underlying: URLError(.badServerResponse))
-        }
+        let http = try await send(request)
         guard (200..<300).contains(http.statusCode) else {
             throw UploadError.serverError(statusCode: http.statusCode, body: "S3 PUT failed")
         }
 
-        return publicURL(for: key)
+        return try publicURL(for: key)
     }
 
     /// Sends a signed HEAD request to the bucket to verify credentials and connectivity.
     /// Succeeds on HTTP 200 (OK) or 403 (reachable but access denied — misconfigured permissions).
     public func testConnection() async throws {
-        let url = config.pathStyle
-            ? URL(string: "https://s3.\(config.region).amazonaws.com/\(config.bucket)/")!
-            : URL(string: "https://\(config.bucket).s3.\(config.region).amazonaws.com/")!
+        let request = try signedRequest(
+            method: "HEAD", key: "", body: Data(), contentType: nil, now: Date()
+        )
 
-        let now = Date()
-        let datetimeString = iso8601DateTime(now)
-        let dateString = String(datetimeString.prefix(8))
-        let payloadHash = SHA256.hash(data: Data()).hexString  // empty body
-        let host = url.host!
-
-        var headers: [(String, String)] = [
-            ("host",                host),
-            ("x-amz-content-sha256", payloadHash),
-            ("x-amz-date",          datetimeString),
-        ]
-        headers.sort { $0.0 < $1.0 }
-        let canonicalHeaders  = headers.map { "\($0.0):\($0.1)" }.joined(separator: "\n") + "\n"
-        let signedHeadersList = headers.map { $0.0 }.joined(separator: ";")
-        let canonicalURI      = url.path.isEmpty ? "/" : url.path
-
-        let canonicalRequest = [
-            "HEAD", canonicalURI, "",
-            canonicalHeaders, signedHeadersList, payloadHash,
-        ].joined(separator: "\n")
-
-        let credentialScope = "\(dateString)/\(config.region)/s3/aws4_request"
-        let stringToSign = [
-            "AWS4-HMAC-SHA256", datetimeString, credentialScope,
-            SHA256.hash(data: Data(canonicalRequest.utf8)).hexString,
-        ].joined(separator: "\n")
-
-        let signingKey = deriveSigningKey(secret: config.secretAccessKey, date: dateString,
-                                         region: config.region, service: "s3")
-        let signature = hexString(HMAC<SHA256>.authenticationCode(
-            for: Data(stringToSign.utf8), using: SymmetricKey(data: signingKey)))
-        let authorization =
-            "AWS4-HMAC-SHA256 Credential=\(config.accessKeyID)/\(credentialScope), " +
-            "SignedHeaders=\(signedHeadersList), Signature=\(signature)"
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "HEAD"
-        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
-        request.setValue(authorization, forHTTPHeaderField: "Authorization")
-
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw UploadError.networkError(underlying: URLError(.badServerResponse))
-        }
+        let http = try await send(request)
         guard http.statusCode == 200 || http.statusCode == 403 else {
             throw UploadError.serverError(statusCode: http.statusCode, body: "")
         }
     }
 
-    // MARK: - URL helpers
-
-    private func endpointURL(key: String) -> URL {
-        let encodedKey = key.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? key
-        if config.pathStyle {
-            return URL(string: "https://s3.\(config.region).amazonaws.com/\(config.bucket)/\(encodedKey)")!
-        } else {
-            return URL(string: "https://\(config.bucket).s3.\(config.region).amazonaws.com/\(encodedKey)")!
+    private func send(_ request: URLRequest) async throws -> HTTPURLResponse {
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw UploadError.networkError(underlying: URLError(.badServerResponse))
         }
-    }
-
-    private func publicURL(for key: String) -> URL {
-        if !config.publicURLTemplate.isEmpty {
-            let encodedKey = key.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? key
-            return URL(string: config.publicURLTemplate + encodedKey)!
-        }
-        return endpointURL(key: key)
-    }
-
-    private func objectFilename() -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyyMMdd-HHmmss"
-        fmt.timeZone = TimeZone(identifier: "UTC")
-        return "\(fmt.string(from: Date()))-\(UUID().uuidString.prefix(8)).png"
+        return http
     }
 
     // MARK: - AWS Signature V4
 
-    private func buildSignedRequest(key: String, body: Data) throws -> URLRequest {
-        let url = endpointURL(key: key)
-        let now = Date()
+    /// Builds the signed request for both the object PUT and the HEAD probe, so
+    /// there is one copy of the signing rules rather than one per request shape.
+    ///
+    /// `now` is a parameter rather than `Date()` inside, so the signature is
+    /// reproducible in tests.
+    func signedRequest(
+        method: String,
+        key: String,
+        body: Data,
+        contentType: String?,
+        now: Date
+    ) throws -> URLRequest {
+        let endpoint = try makeEndpoint(encodedKey: SigV4.encodeObjectKey(key))
 
-        // Timestamps
-        let datetimeString = iso8601DateTime(now)
-        let dateString     = String(datetimeString.prefix(8))
+        let datetime = SigV4.amzDate(now)
+        let date = String(datetime.prefix(8))
+        let payloadHash = SigV4.sha256Hex(body)
 
-        // Payload hash (hex-encoded SHA-256 of body)
-        let payloadHash = SHA256.hash(data: body).hexString
-
-        // Build headers (must be in lowercase, sorted for canonical form)
-        let host = url.host!
-        var headers: [(String, String)] = [
-            ("content-type",        "image/png"),
-            ("host",                host),
-            ("x-amz-content-sha256", payloadHash),
-            ("x-amz-date",          datetimeString),
+        var headers: [(name: String, value: String)] = [
+            (name: "host", value: endpoint.host),
+            (name: "x-amz-content-sha256", value: payloadHash),
+            (name: "x-amz-date", value: datetime),
         ]
-        headers.sort { $0.0 < $1.0 }
+        if let contentType {
+            headers.append((name: "content-type", value: contentType))
+        }
 
-        // Canonical request
-        let canonicalHeaders  = headers.map { "\($0.0):\($0.1)" }.joined(separator: "\n") + "\n"
-        let signedHeadersList = headers.map { $0.0 }.joined(separator: ";")
-        let canonicalURI      = url.path.isEmpty ? "/" : url.path
-        let canonicalQuery    = ""   // no query params on PUT
+        let (canonical, signedHeaders) = SigV4.canonicalRequest(
+            method: method,
+            uri: endpoint.canonicalURI,
+            query: "",
+            headers: headers,
+            payloadHash: payloadHash
+        )
+        let scope = SigV4.credentialScope(date: date, region: config.region, service: "s3")
+        let signature = SigV4.signature(
+            stringToSign: SigV4.stringToSign(
+                datetime: datetime, scope: scope, canonicalRequest: canonical
+            ),
+            key: SigV4.signingKey(
+                secret: config.secretAccessKey, date: date, region: config.region, service: "s3"
+            )
+        )
 
-        let canonicalRequest = [
-            "PUT",
-            canonicalURI,
-            canonicalQuery,
-            canonicalHeaders,
-            signedHeadersList,
-            payloadHash,
-        ].joined(separator: "\n")
-
-        // String to sign
-        let credentialScope = "\(dateString)/\(config.region)/s3/aws4_request"
-        let stringToSign = [
-            "AWS4-HMAC-SHA256",
-            datetimeString,
-            credentialScope,
-            SHA256.hash(data: Data(canonicalRequest.utf8)).hexString,
-        ].joined(separator: "\n")
-
-        // Derive signing key: HMAC(HMAC(HMAC(HMAC("AWS4"+secret, date), region), "s3"), "aws4_request")
-        let signingKey = deriveSigningKey(secret: config.secretAccessKey, date: dateString,
-                                         region: config.region, service: "s3")
-
-        // Signature
-        let signature = hexString(HMAC<SHA256>.authenticationCode(
-            for: Data(stringToSign.utf8),
-            using: SymmetricKey(data: signingKey)
-        ))
-
-        // Authorization header
-        let authorization =
-            "AWS4-HMAC-SHA256 " +
-            "Credential=\(config.accessKeyID)/\(credentialScope), " +
-            "SignedHeaders=\(signedHeadersList), " +
-            "Signature=\(signature)"
-
-        // Assemble URLRequest
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        request.httpBody   = body
+        var request = URLRequest(url: endpoint.url)
+        request.httpMethod = method
+        if !body.isEmpty { request.httpBody = body }
         for (name, value) in headers {
             request.setValue(value, forHTTPHeaderField: name)
         }
-        request.setValue(authorization, forHTTPHeaderField: "Authorization")
+        request.setValue(
+            SigV4.authorizationHeader(
+                accessKeyID: config.accessKeyID,
+                scope: scope,
+                signedHeaders: signedHeaders,
+                signature: signature
+            ),
+            forHTTPHeaderField: "Authorization"
+        )
         return request
     }
 
-    private func deriveSigningKey(secret: String, date: String, region: String, service: String) -> Data {
-        func hmac(_ key: Data, _ message: String) -> Data {
-            Data(HMAC<SHA256>.authenticationCode(
-                for: Data(message.utf8),
-                using: SymmetricKey(data: key)
-            ))
-        }
-        let kDate    = hmac(Data(("AWS4" + secret).utf8), date)
-        let kRegion  = hmac(kDate,    region)
-        let kService = hmac(kRegion,  service)
-        let kSigning = hmac(kService, "aws4_request")
-        return kSigning
+    // MARK: - URL helpers
+
+    /// The request URL and the canonical URI are built from one already-encoded
+    /// key, so the path that gets signed is byte-for-byte the path that is sent.
+    /// Reading the path back off a `URL` does not work: `URL.path` percent-decodes.
+    private struct Endpoint {
+        let url: URL
+        let canonicalURI: String
+        let host: String
     }
 
-    // MARK: - Date helpers
+    private func makeEndpoint(encodedKey: String) throws -> Endpoint {
+        let host: String
+        let canonicalURI: String
+        if config.pathStyle {
+            host = "s3.\(config.region).amazonaws.com"
+            canonicalURI = "/\(config.bucket)/\(encodedKey)"
+        } else {
+            host = "\(config.bucket).s3.\(config.region).amazonaws.com"
+            canonicalURI = "/\(encodedKey)"
+        }
+        guard let url = URL(string: "https://\(host)\(canonicalURI)") else {
+            throw UploadError.invalidConfiguration(
+                "Bucket and region do not form a valid S3 URL: \(config.bucket) / \(config.region)"
+            )
+        }
+        return Endpoint(url: url, canonicalURI: canonicalURI, host: host)
+    }
 
-    private func iso8601DateTime(_ date: Date) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat  = "yyyyMMdd'T'HHmmss'Z'"
-        fmt.timeZone    = TimeZone(identifier: "UTC")
-        fmt.locale      = Locale(identifier: "en_US_POSIX")
-        return fmt.string(from: date)
+    func publicURL(for key: String) throws -> URL {
+        let encodedKey = SigV4.encodeObjectKey(key)
+        guard !config.publicURLTemplate.isEmpty else {
+            return try makeEndpoint(encodedKey: encodedKey).url
+        }
+        guard let url = URL(string: config.publicURLTemplate + encodedKey) else {
+            throw UploadError.invalidConfiguration(
+                "Public URL template is not a valid URL: \(config.publicURLTemplate)"
+            )
+        }
+        return url
+    }
+
+    /// A date-sortable object name.  Pinned to POSIX so a non-Gregorian system
+    /// calendar cannot put a different year in the filename.
+    private func objectFilename() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return "\(formatter.string(from: Date()))-\(UUID().uuidString.prefix(8)).png"
     }
 
     // MARK: - Image encoding
@@ -273,15 +224,4 @@ public struct S3Uploader: Uploader, Sendable {
         guard CGImageDestinationFinalize(dest) else { return nil }
         return mutable as Data
     }
-}
-
-// MARK: - Hex-string helpers
-
-private extension Digest {
-    var hexString: String { map { String(format: "%02x", $0) }.joined() }
-}
-
-// HashedAuthenticationCode (HMAC result) is not a Digest, but is Sequence<UInt8>
-private func hexString<S: Sequence>(_ bytes: S) -> String where S.Element == UInt8 {
-    bytes.map { String(format: "%02x", $0) }.joined()
 }
