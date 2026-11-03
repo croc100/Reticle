@@ -1,6 +1,7 @@
 import CoreImage
 import CoreGraphics
 import AppKit
+import Foundation
 import ReticleCore
 
 /// Composites one or more MaskRegions onto a CGImage using CoreImage filters.
@@ -157,4 +158,18 @@ public struct MaskRenderer {
 public enum EffectsError: Error {
     case contextCreationFailed
     case renderFailed
+}
+
+extension EffectsError: LocalizedError {
+    // A failed mask now aborts the capture rather than saving the unmasked
+    // frame, so this text is what the user actually reads in the alert.
+    public var errorDescription: String? {
+        switch self {
+        case .contextCreationFailed:
+            return "Could not allocate a bitmap to draw the masks into. "
+                 + "The screenshot may be too large for available memory."
+        case .renderFailed:
+            return "The masked image could not be rendered."
+        }
+    }
 }
