@@ -258,10 +258,17 @@ final class CaptureCoordinator: ObservableObject {
             } else {
                 optSet = Set(globalOptions)
             }
-            // Apply static masks before pipeline
+            // Static masks run ahead of the pipeline.  A failure here is reported
+            // rather than swallowed: falling back to `image` would save and upload
+            // exactly the pixels the mask exists to cover.
             let masks = Defaults[.staticMasks].filter(\.enabled)
-            let maskedImage = masks.isEmpty ? image
-                : (try? maskRenderer.render(image: image, masks: masks, scaleFactor: scaleFactor)) ?? image
+            let maskedImage: CGImage
+            if masks.isEmpty {
+                maskedImage = image
+            } else {
+                maskedImage = try maskRenderer.render(
+                    image: image, masks: masks, scaleFactor: scaleFactor)
+            }
 
             // Ordered options array (for tasks that iterate in order)
             let options = AfterCaptureOption.allCases.filter { optSet.contains($0) }
@@ -307,26 +314,31 @@ final class CaptureCoordinator: ObservableObject {
                 afterOutput: afterOutputs
             )
 
+            // From here on the capture is whatever the pipeline produced: masked,
+            // PII-redacted, bordered and watermarked.  `image` is the raw frame and
+            // must not be read past this point — it is the unredacted original.
+            let finalImage = ctx.finalScreenshot?.image ?? maskedImage
+
             if optSet.contains(.showNotification) {
-                thumbnail.show(image: image, savedAt: ctx.outputURLs.first)
+                thumbnail.show(image: finalImage, savedAt: ctx.outputURLs.first)
             }
             playShutterSound()
 
             // Record to capture history
-            let thumbData = CaptureHistoryManager.makeThumbnail(from: image)
+            let thumbData = CaptureHistoryManager.makeThumbnail(from: finalImage)
             let histItem = HistoryItem(
                 filePath: ctx.outputURLs.first?.path,
                 sourceRect: sourceRect,
                 scaleFactor: Double(scaleFactor),
-                widthPx: image.width,
-                heightPx: image.height,
+                widthPx: finalImage.width,
+                heightPx: finalImage.height,
                 thumbnailData: thumbData
             )
             CaptureHistoryManager.shared.add(histItem)
 
-            // Pin to screen (needs raw image, done outside pipeline)
+            // Pin to screen (lives outside the pipeline, so it is handed the result)
             if optSet.contains(.pinToScreen) {
-                PinToScreenPanel.pin(image: image)
+                PinToScreenPanel.pin(image: finalImage)
             }
 
             // Upload tasks — all share the same completion handler.
@@ -341,7 +353,7 @@ final class CaptureCoordinator: ObservableObject {
                 } else {
                     Task {
                         do {
-                            let url = try await ImgurUploader(clientID: clientID).upload(image)
+                            let url = try await ImgurUploader(clientID: clientID).upload(finalImage)
                             handleUploadedURL(url, openInBrowser: openAfterUpload)
                         } catch { await MainActor.run { self.showError(error) } }
                     }
@@ -368,7 +380,7 @@ final class CaptureCoordinator: ObservableObject {
                     )
                     Task {
                         do {
-                            let url = try await S3Uploader(config: s3Config).upload(image)
+                            let url = try await S3Uploader(config: s3Config).upload(finalImage)
                             handleUploadedURL(url, openInBrowser: openAfterUpload)
                         } catch { await MainActor.run { self.showError(error) } }
                     }
@@ -397,7 +409,7 @@ final class CaptureCoordinator: ObservableObject {
                     )
                     Task {
                         do {
-                            let url = try await CustomHTTPUploader(config: httpConfig).upload(image)
+                            let url = try await CustomHTTPUploader(config: httpConfig).upload(finalImage)
                             handleUploadedURL(url, openInBrowser: openAfterUpload)
                         } catch { await MainActor.run { self.showError(error) } }
                     }
@@ -422,7 +434,7 @@ final class CaptureCoordinator: ObservableObject {
                     )
                     Task {
                         do {
-                            let url = try await SFTPUploader(config: sftpConfig).upload(image)
+                            let url = try await SFTPUploader(config: sftpConfig).upload(finalImage)
                             handleUploadedURL(url, openInBrowser: openAfterUpload)
                         } catch { await MainActor.run { self.showError(error) } }
                     }
@@ -433,7 +445,7 @@ final class CaptureCoordinator: ObservableObject {
                 Task {
                     let langs = Defaults[.ocrLanguages]
                     do {
-                        let text = try await OCRProcessor(languages: langs).recognizeText(in: image)
+                        let text = try await OCRProcessor(languages: langs).recognizeText(in: finalImage)
                         OCRResultPanel.shared.show(text: text)
                     } catch {
                         OCRResultPanel.shared.show(text: "OCR failed: \(error.localizedDescription)")

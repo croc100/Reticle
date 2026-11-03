@@ -64,6 +64,7 @@ public actor PipelineRunner {
         afterOutput: [any AfterOutputTask]
     ) async throws -> CaptureContext {
         for task in afterCapture { try await task.execute(screenshot: &screenshot, context: context) }
+        context.finalScreenshot = screenshot
         for task in outputs      { try await task.execute(screenshot: screenshot,  context: &context) }
         for task in afterOutput  { try await task.execute(context: context) }
         return context
