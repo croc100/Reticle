@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 
-/// Uploads a CGImage directly to an AWS S3 bucket using a PUT request
+/// Uploads an encoded screenshot directly to an AWS S3 bucket using a PUT request
 /// signed with AWS Signature Version 4.  No third-party SDK required.
 ///
 /// Required IAM permissions: `s3:PutObject` on the target bucket/prefix.
@@ -58,14 +58,11 @@ public struct S3Uploader: Uploader, Sendable {
 
     // MARK: - Uploader
 
-    public func upload(_ image: CGImage) async throws -> URL {
-        guard let pngData = pngData(from: image) else {
-            throw UploadError.encodingFailed
-        }
-
-        let key = config.keyPrefix + objectFilename()
+    public func upload(_ image: EncodedImage) async throws -> URL {
+        let key = config.keyPrefix + objectFilename(extension: image.fileExtension)
         let request = try signedRequest(
-            method: "PUT", key: key, body: pngData, contentType: "image/png", now: Date()
+            method: "PUT", key: key, body: image.data,
+            contentType: image.contentType, now: Date()
         )
 
         let http = try await send(request)
@@ -205,23 +202,15 @@ public struct S3Uploader: Uploader, Sendable {
 
     /// A date-sortable object name.  Pinned to POSIX so a non-Gregorian system
     /// calendar cannot put a different year in the filename.
-    private func objectFilename() -> String {
+    private func objectFilename(extension fileExtension: String) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         formatter.timeZone = TimeZone(identifier: "UTC")
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        return "\(formatter.string(from: Date()))-\(UUID().uuidString.prefix(8)).png"
+        let stamp = formatter.string(from: Date())
+        return "\(stamp)-\(UUID().uuidString.prefix(8)).\(fileExtension)"
     }
 
     // MARK: - Image encoding
 
-    private func pngData(from image: CGImage) -> Data? {
-        let mutable = NSMutableData()
-        guard let dest = CGImageDestinationCreateWithData(mutable, "public.png" as CFString, 1, nil) else {
-            return nil
-        }
-        CGImageDestinationAddImage(dest, image, nil)
-        guard CGImageDestinationFinalize(dest) else { return nil }
-        return mutable as Data
-    }
 }
