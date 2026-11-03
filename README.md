@@ -152,7 +152,7 @@ Each tool is **sticky** — stays active until you switch to another.
 | Pixel-perfect capture | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Display P3 color space preserved | ✅ | ✅ | ❓ | ❓ | ❌ |
 | **Static Mask (auto-redact regions)** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Vision PII auto-detection** | 🔜 | ❌ | ❌ | ❌ | ❌ |
+| **Vision PII auto-detection** | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Reticle vs. ShareX
 
