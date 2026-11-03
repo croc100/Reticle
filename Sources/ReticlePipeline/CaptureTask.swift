@@ -31,10 +31,19 @@ public struct CaptureContext: Sendable {
     public var workflowID: UUID
     public var triggeredAt: Date
     public var outputURLs: [URL]
+    /// The screenshot as it stood once every ``AfterCaptureTask`` had run, so
+    /// after static masks, PII redaction, the border and the watermark.
+    ///
+    /// Anything that consumes the capture *outside* the pipeline — uploads, OCR,
+    /// the history thumbnail, pin-to-screen — has to read the image from here.
+    /// Reaching back to the pre-pipeline `CGImage` publishes the unredacted
+    /// original, which is the one thing redaction exists to prevent.
+    public var finalScreenshot: Screenshot?
 
     public init(workflowID: UUID, triggeredAt: Date = .now) {
         self.workflowID = workflowID
         self.triggeredAt = triggeredAt
         self.outputURLs = []
+        self.finalScreenshot = nil
     }
 }
