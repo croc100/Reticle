@@ -23,7 +23,7 @@ const base = import.meta.env.BASE_URL;
         { icon: '☁️', name: 'Upload', desc: 'Uploads to your configured destination (Imgur, S3, SFTP, or custom). See the Uploads guide.', href: `${base}docs/uploads/` },
       ].map(item => (
         <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
-          <span class="text-xl flex-shrink-0 mt-0.5">{item.icon}</span>
+          <span class="text-xl shrink-0 mt-0.5">{item.icon}</span>
           <div>
             <div class="text-sm font-medium text-text-primary mb-1">{item.name}</div>
             <div class="text-sm text-text-secondary">{item.desc}
@@ -45,7 +45,7 @@ const base = import.meta.env.BASE_URL;
         ['Accuracy', 'Works well on screenshots, UI elements, code, printed documents. Accuracy drops on very small or stylized fonts.'],
       ].map(([label, note]) => (
         <div class="flex gap-3 p-3 bg-surface-raised border border-surface-border rounded-lg">
-          <span class="text-xs font-semibold text-accent w-24 flex-shrink-0 mt-0.5">{label}</span>
+          <span class="text-xs font-semibold text-accent w-24 shrink-0 mt-0.5">{label}</span>
           <span class="text-sm text-text-secondary">{note}</span>
         </div>
       ))}
@@ -75,7 +75,7 @@ const base = import.meta.env.BASE_URL;
         ['%width% %height%', 'Screenshot dimensions in pixels'],
       ].map(([token, desc]) => (
         <div class="flex gap-3 items-center p-3 bg-surface-raised border border-surface-border rounded-lg">
-          <code class="text-xs font-mono text-accent bg-black/40 px-2 py-1 rounded flex-shrink-0">{token}</code>
+          <code class="text-xs font-mono text-accent bg-black/40 px-2 py-1 rounded-sm shrink-0">{token}</code>
           <span class="text-xs text-text-secondary">{desc}</span>
         </div>
       ))}

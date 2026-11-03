@@ -17,7 +17,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
         'The shortcut is saved immediately.',
       ].map((s, i) => (
         <li class="flex gap-3 text-sm text-text-secondary">
-          <span class="text-accent font-bold flex-shrink-0">{i + 1}.</span> {s}
+          <span class="text-accent font-bold shrink-0">{i + 1}.</span> {s}
         </li>
       ))}
     </ol>
@@ -29,8 +29,8 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <section class="mb-12">
     <h2 class="text-xl font-semibold mb-4">How Reticle fits alongside macOS</h2>
     <p class="text-text-secondary text-sm mb-4">
-      macOS owns <kbd class="bg-black/40 border border-surface-border rounded px-1.5 py-0.5 text-xs font-mono">⌘⇧3</kbd> and <kbd class="bg-black/40 border border-surface-border rounded px-1.5 py-0.5 text-xs font-mono">⌘⇧4</kbd> — don't fight it.
-      Reticle sits right next to them at <kbd class="bg-black/40 border border-surface-border rounded px-1.5 py-0.5 text-xs font-mono">⌘⇧2</kbd>.
+      macOS owns <kbd class="bg-black/40 border border-surface-border rounded-sm px-1.5 py-0.5 text-xs font-mono">⌘⇧3</kbd> and <kbd class="bg-black/40 border border-surface-border rounded-sm px-1.5 py-0.5 text-xs font-mono">⌘⇧4</kbd> — don't fight it.
+      Reticle sits right next to them at <kbd class="bg-black/40 border border-surface-border rounded-sm px-1.5 py-0.5 text-xs font-mono">⌘⇧2</kbd>.
     </p>
     <div class="overflow-x-auto rounded-xl border border-surface-border">
       <table class="w-full text-sm">

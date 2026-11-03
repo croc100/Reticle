@@ -31,7 +31,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
         ['Enable it', 'Toggle the profile on. It\'ll appear in the menu bar and respond to its hotkey.'],
       ].map(([step, note]) => (
         <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl">
-          <span class="text-sm font-semibold text-accent flex-shrink-0 w-28">{step}</span>
+          <span class="text-sm font-semibold text-accent shrink-0 w-28">{step}</span>
           <span class="text-sm text-text-secondary">{note}</span>
         </div>
       ))}
@@ -64,7 +64,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
         <div class="p-5 bg-surface-raised border border-surface-border rounded-xl">
           <div class="flex items-center justify-between mb-2">
             <div class="font-medium text-text-primary">{w.name}</div>
-            <kbd class="text-xs font-mono bg-black/40 border border-surface-border rounded px-2 py-1 text-text-primary">{w.hotkey}</kbd>
+            <kbd class="text-xs font-mono bg-black/40 border border-surface-border rounded-sm px-2 py-1 text-text-primary">{w.hotkey}</kbd>
           </div>
           <div class="flex flex-wrap gap-1.5 mb-3">
             {w.steps.map((s, i) => (

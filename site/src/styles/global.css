@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/* Tailwind 4 is configured in CSS. These tokens are the former
+   tailwind.config.mjs `theme.extend`, one for one. */
+@source "../";
+
+@theme {
+  --color-accent: #e8442a; /* reticle red */
+  --color-accent-dim: #b03320;
+  --color-surface: #111114;
+  --color-surface-raised: #18181c;
+  --color-surface-border: #2a2a30;
+  --color-text-primary: #f0f0f2;
+  --color-text-secondary: #8a8a96;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+}

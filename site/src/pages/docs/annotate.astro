@@ -60,7 +60,7 @@ const tools = [
 
   <!-- Sticky mode callout -->
   <div class="p-4 border border-accent/30 bg-accent/5 rounded-xl text-sm text-text-secondary mb-10">
-    <strong class="text-accent">Sticky mode:</strong> tools stay active after each annotation — draw a rectangle, then draw another, without clicking the button again. To switch tools, just click a different one. To cancel and go back to selection, press <kbd class="bg-black/40 border border-surface-border rounded px-1.5 py-0.5 text-xs font-mono">Escape</kbd>.
+    <strong class="text-accent">Sticky mode:</strong> tools stay active after each annotation — draw a rectangle, then draw another, without clicking the button again. To switch tools, just click a different one. To cancel and go back to selection, press <kbd class="bg-black/40 border border-surface-border rounded-sm px-1.5 py-0.5 text-xs font-mono">Escape</kbd>.
   </div>
 
   <!-- Common controls -->
@@ -90,7 +90,7 @@ const tools = [
       <div class="space-y-3">
         {group.items.map(tool => (
           <div class="flex gap-4 p-4 bg-surface-raised border border-surface-border rounded-xl hover:border-surface-border/80 transition-colors">
-            <span class="text-xl w-8 text-center flex-shrink-0 mt-0.5">{tool.icon}</span>
+            <span class="text-xl w-8 text-center shrink-0 mt-0.5">{tool.icon}</span>
             <div>
               <div class="text-sm font-medium text-text-primary mb-1">{tool.name}</div>
               <div class="text-sm text-text-secondary leading-relaxed">{tool.desc}</div>
