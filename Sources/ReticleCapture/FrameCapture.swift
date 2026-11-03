@@ -2,24 +2,25 @@ import ScreenCaptureKit
 import CoreMedia
 import Foundation
 
-/// `SCStreamOutput` + `SCStreamDelegate` that resolves a single `CMSampleBuffer`
-/// via a `CheckedContinuation`.
+/// `SCStreamOutput` + `SCStreamDelegate` that resolves a single `CMSampleBuffer`.
 ///
-/// One instance is created per capture call and discarded once the frame arrives.
-/// Thread-safety is provided by `NSLock`; `@unchecked Sendable` is safe here because
-/// the lock guards the only mutable state (`continuation`).
+/// One instance is created per capture call and discarded once the frame
+/// arrives.  The handoff to the waiting task — and the ordering problem that
+/// comes with the stream being started before anything waits on it — lives in
+/// ``FrameHandoff``.  `@unchecked Sendable` because the only stored property is
+/// an immutable reference to that handoff, which is itself safe to share.
 final class FrameCapture: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
 
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<CMSampleBuffer, Error>?
+    private let handoff = FrameHandoff<CMSampleBuffer>()
 
     // MARK: - Public
 
     /// Suspends until the stream delivers its first *complete* frame, then returns it.
+    ///
+    /// Safe to call after the frame has already arrived: it returns immediately
+    /// in that case rather than waiting for a second one.
     func waitForFrame() async throws -> CMSampleBuffer {
-        try await withCheckedThrowingContinuation { cont in
-            lock.withLock { continuation = cont }
-        }
+        try await handoff.value()
     }
 
     // MARK: - SCStreamOutput
@@ -35,25 +36,16 @@ final class FrameCapture: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked
         // SCK delivers a few "idle" frames before content is ready — skip them.
         guard isComplete(buffer) else { return }
 
-        resume(with: .success(buffer))
+        handoff.deliver(.success(buffer))
     }
 
     // MARK: - SCStreamDelegate
 
     func stream(_ stream: SCStream, didStopWithError error: Error) {
-        resume(with: .failure(CaptureError.streamFailed(underlying: error)))
+        handoff.deliver(.failure(CaptureError.streamFailed(underlying: error)))
     }
 
     // MARK: - Private
-
-    private func resume(with result: Result<CMSampleBuffer, Error>) {
-        let cont = lock.withLock { () -> CheckedContinuation<CMSampleBuffer, Error>? in
-            let c = continuation
-            continuation = nil
-            return c
-        }
-        cont?.resume(with: result)
-    }
 
     private func isComplete(_ buffer: CMSampleBuffer) -> Bool {
         guard
@@ -64,15 +56,5 @@ final class FrameCapture: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked
             let status = SCFrameStatus(rawValue: raw)
         else { return false }
         return status == .complete
-    }
-}
-
-// MARK: - NSLock convenience
-
-private extension NSLock {
-    @discardableResult
-    func withLock<T>(_ body: () -> T) -> T {
-        lock(); defer { unlock() }
-        return body()
     }
 }
