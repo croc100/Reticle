@@ -157,21 +157,27 @@ final class CaptureCoordinator: ObservableObject {
     /// `SCDisplay.frame`: two comments in this project disagree about which
     /// coordinate space that is in, and laying displays out is exactly where
     /// getting it wrong would show.
+    ///
+    /// The grabs are sequential, and each one resolves its own display, so this
+    /// costs one `SCShareableContent` query per display.  Both are addressed by
+    /// the concurrent multi-display capture on the capture-performance branch;
+    /// correctness first, and this is the slow-but-right version.
     private func runAllScreens(profileDestinations: [String]? = nil) async {
         do {
             await applyDelay()
-            let (displays, _) = try await provider.fetchContent()
-            guard !displays.isEmpty else { return }
 
+            // The display list comes from the same place as the frames, so
+            // there is nothing to pair up and no `SCDisplay` in sight.
             let layout = DisplayLayout.current
             let bounds = layout.bounds
-            guard !bounds.isEmpty else { return }
+            guard !layout.displays.isEmpty, !bounds.isEmpty else { return }
 
             var tiles: [DisplayCompositor.Tile] = []
             var scale: CGFloat = 1
-            for display in displays {
+            for display in layout.displays {
                 guard let placement = layout.placement(of: display.displayID) else { continue }
-                let shot = try await capturer.capture(display: display)
+                let shot = try await capturer.capture(
+                    mode: .fullScreen(displayID: display.displayID))
                 tiles.append(DisplayCompositor.Tile(placement: placement, image: shot.image))
                 scale = max(scale, shot.scaleFactor)
             }
