@@ -65,6 +65,10 @@ public extension Defaults.Keys {
     static let lastRegionHotkeyMods      = Key<UInt32>("lastRegionHotkeyMods",      default: 0)
     static let windowPickerHotkeyKeyCode = Key<UInt32>("windowPickerHotkeyKeyCode", default: 0)
     static let windowPickerHotkeyMods    = Key<UInt32>("windowPickerHotkeyMods",    default: 0)
+    // Unassigned by default, like the two above: picking a combination for the
+    // user risks colliding with one they or the system already use.
+    static let activeWindowHotkeyKeyCode = Key<UInt32>("activeWindowHotkeyKeyCode", default: 0)
+    static let activeWindowHotkeyMods    = Key<UInt32>("activeWindowHotkeyMods",    default: 0)
 
     // MARK: Capture behaviour
 

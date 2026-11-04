@@ -120,6 +120,8 @@ private struct HotkeysTab: View {
     @Default(.lastRegionHotkeyMods)      var lastMods
     @Default(.windowPickerHotkeyKeyCode) var winCode
     @Default(.windowPickerHotkeyMods)    var winMods
+    @Default(.activeWindowHotkeyKeyCode) var activeWinCode
+    @Default(.activeWindowHotkeyMods)    var activeWinMods
 
     var body: some View {
         Form {
@@ -127,6 +129,8 @@ private struct HotkeysTab: View {
                 HotkeyRow(label: "Capture Region",       keyCode: $regionCode, modifiers: $regionMods)
                 HotkeyRow(label: "Capture Current Screen", keyCode: $fullCode, modifiers: $fullMods)
                 HotkeyRow(label: "Repeat Last Region",   keyCode: $lastCode,   modifiers: $lastMods)
+                HotkeyRow(label: "Capture Active Window", keyCode: $activeWinCode,
+                          modifiers: $activeWinMods)
                 HotkeyRow(label: "Capture Window…",      keyCode: $winCode,    modifiers: $winMods)
             }
         }

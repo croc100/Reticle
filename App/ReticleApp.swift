@@ -20,6 +20,7 @@ struct ReticleApp: App {
         hotkeyManager.onClipboardHistory    = { ClipboardHistoryPanel.shared.toggle() }
         hotkeyManager.onCaptureLastRegion   = { coord.captureLastRegion()           }
         hotkeyManager.onCaptureWindowPicker = { coord.captureWindowPicker()         }
+        hotkeyManager.onCaptureActiveWindow  = { coord.captureActiveWindow()        }
         hotkeyManager.onWorkflow            = { id in coord.runWorkflow(profileID: id) }
 
         AutoCaptureManager.shared.captureAction = { [coord] mode in

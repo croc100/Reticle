@@ -17,6 +17,8 @@ struct MenuBarMenuView: View {
     @Default(.regionHotkeyMods)       var regionMods
     @Default(.fullscreenHotkeyKeyCode) var fullCode
     @Default(.fullscreenHotkeyMods)   var fullMods
+    @Default(.activeWindowHotkeyKeyCode) var activeWinCode
+    @Default(.activeWindowHotkeyMods)    var activeWinMods
     @ObservedObject private var autoCapture = AutoCaptureManager.shared
 
     var body: some View {
@@ -40,6 +42,9 @@ struct MenuBarMenuView: View {
             }
         }
 
+        Button(hotkeyLabel("Capture Active Window", keyCode: activeWinCode, mods: activeWinMods)) {
+            coordinator.captureActiveWindow()
+        }
         Button("Capture Window…")            { coordinator.captureWindowPicker() }
         Button("Scroll Capture…")            { coordinator.captureScroll() }
 
