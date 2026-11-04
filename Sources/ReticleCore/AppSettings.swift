@@ -106,6 +106,10 @@ public extension Defaults.Keys {
     static let s3KeyPrefix         = Key<String>("s3KeyPrefix",         default: "")
     static let s3PublicURLTemplate = Key<String>("s3PublicURLTemplate", default: "")
     static let s3PathStyle         = Key<Bool>("s3PathStyle",           default: false)
+    /// Host of an S3-compatible service. Empty means Amazon.
+    static let s3Endpoint          = Key<String>("s3Endpoint",          default: "")
+    /// Raw value of `S3Provider`; drives what Settings pre-fills, nothing else.
+    static let s3ProviderID        = Key<String>("s3ProviderID",        default: "aws")
 
     // MARK: Custom HTTP Upload
 
