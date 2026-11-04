@@ -125,7 +125,7 @@ private struct HotkeysTab: View {
         Form {
             Section("Capture") {
                 HotkeyRow(label: "Capture Region",       keyCode: $regionCode, modifiers: $regionMods)
-                HotkeyRow(label: "Capture Full Screen",  keyCode: $fullCode,   modifiers: $fullMods)
+                HotkeyRow(label: "Capture Current Screen", keyCode: $fullCode, modifiers: $fullMods)
                 HotkeyRow(label: "Repeat Last Region",   keyCode: $lastCode,   modifiers: $lastMods)
                 HotkeyRow(label: "Capture Window…",      keyCode: $winCode,    modifiers: $winMods)
             }

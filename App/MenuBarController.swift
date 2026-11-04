@@ -24,8 +24,8 @@ struct MenuBarMenuView: View {
         Button(hotkeyLabel("Capture Region", keyCode: regionCode, mods: regionMods)) {
             coordinator.captureWithOverlay()
         }
-        Button(hotkeyLabel("Capture Full Screen", keyCode: fullCode, mods: fullMods)) {
-            coordinator.captureFullScreen()
+        Button(hotkeyLabel("Capture Current Screen", keyCode: fullCode, mods: fullMods)) {
+            coordinator.captureCurrentScreen()
         }
 
         // Per-monitor capture submenu (populated from connected NSScreens)
