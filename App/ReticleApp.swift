@@ -16,7 +16,7 @@ struct ReticleApp: App {
         let coord = coordinator
 
         hotkeyManager.onCaptureRegion       = { coord.captureWithOverlay()          }
-        hotkeyManager.onCaptureFullScreen   = { coord.captureFullScreen()           }
+        hotkeyManager.onCaptureFullScreen   = { coord.captureCurrentScreen()        }
         hotkeyManager.onClipboardHistory    = { ClipboardHistoryPanel.shared.toggle() }
         hotkeyManager.onCaptureLastRegion   = { coord.captureLastRegion()           }
         hotkeyManager.onCaptureWindowPicker = { coord.captureWindowPicker()         }
@@ -24,8 +24,9 @@ struct ReticleApp: App {
 
         AutoCaptureManager.shared.captureAction = { [coord] mode in
             switch mode {
-            case .activeScreen, .fullScreen: coord.captureFullScreen()
-            case .lastRegion:               coord.captureLastRegion()
+            case .activeScreen: coord.captureCurrentScreen()
+            case .fullScreen:   coord.captureMainScreen()
+            case .lastRegion:   coord.captureLastRegion()
             }
         }
 
