@@ -15,8 +15,16 @@ public struct S3Uploader: Uploader, Sendable {
     public struct Config: Sendable {
         /// Target bucket name, e.g. "my-screenshots"
         public var bucket: String
-        /// AWS region identifier, e.g. "us-east-1"
+        /// Region identifier used in the credential scope, e.g. "us-east-1".
+        /// Cloudflare R2 requires "auto"; services that ignore regions still
+        /// need the signature to agree with whatever they were started with.
         public var region: String
+        /// Host of an S3-compatible service, with an optional scheme and port:
+        /// `"<account>.r2.cloudflarestorage.com"`,
+        /// `"https://s3.us-west-004.backblazeb2.com"`, `"http://localhost:9000"`.
+        ///
+        /// Empty means Amazon, whose endpoint follows from the region.
+        public var endpoint: String
         /// IAM access key ID
         public var accessKeyID: String
         /// IAM secret access key
@@ -36,12 +44,14 @@ public struct S3Uploader: Uploader, Sendable {
             region: String,
             accessKeyID: String,
             secretAccessKey: String,
+            endpoint: String = "",
             keyPrefix: String = "",
             publicURLTemplate: String = "",
             pathStyle: Bool = false
         ) {
             self.bucket = bucket
             self.region = region
+            self.endpoint = endpoint
             self.accessKeyID = accessKeyID
             self.secretAccessKey = secretAccessKey
             self.keyPrefix = keyPrefix
@@ -173,21 +183,107 @@ public struct S3Uploader: Uploader, Sendable {
     }
 
     private func makeEndpoint(encodedKey: String) throws -> Endpoint {
+        try Self.validateBucket(config.bucket)
+
+        let base = try Self.parseEndpoint(config.endpoint)
+        // Amazon's host follows from the region; anything else supplies its own.
+        let serviceHost = base?.host ?? "s3.\(config.region).amazonaws.com"
+        let scheme = base?.scheme ?? "https"
+
         let host: String
         let canonicalURI: String
         if config.pathStyle {
-            host = "s3.\(config.region).amazonaws.com"
+            host = serviceHost
             canonicalURI = "/\(config.bucket)/\(encodedKey)"
         } else {
-            host = "\(config.bucket).s3.\(config.region).amazonaws.com"
+            // A port stays at the end of the authority, so prefixing the
+            // bucket as a subdomain is still the right shape: with
+            // "localhost:9000" this reads "bucket.localhost:9000".
+            host = "\(config.bucket).\(serviceHost)"
             canonicalURI = "/\(encodedKey)"
         }
-        guard let url = URL(string: "https://\(host)\(canonicalURI)") else {
+        guard let url = URL(string: "\(scheme)://\(host)\(canonicalURI)") else {
             throw UploadError.invalidConfiguration(
-                "Bucket and region do not form a valid S3 URL: \(config.bucket) / \(config.region)"
+                "Bucket, region and endpoint do not form a valid URL: "
+                    + "\(config.bucket) / \(config.region) / \(config.endpoint)"
             )
         }
         return Endpoint(url: url, canonicalURI: canonicalURI, host: host)
+    }
+
+    // MARK: - Typed-input validation
+
+    /// A custom endpoint, split into the parts a signed request needs.
+    struct ParsedEndpoint: Equatable {
+        let scheme: String
+        /// Host including the port when one was given: SigV4 signs the `host`
+        /// header verbatim, and a non-default port belongs in it.
+        let host: String
+    }
+
+    /// Splits a typed endpoint into scheme and host, or nil for "use Amazon".
+    ///
+    /// Accepts what people actually paste — a bare host, a host with a port,
+    /// either with a scheme in front, with or without a trailing slash.
+    ///
+    /// Throws rather than guessing when the value carries a path. A path prefix
+    /// would have to be folded into the canonical URI to be signed correctly,
+    /// and silently dropping it signs one path and sends another: a 403 with
+    /// nothing in it to explain why.
+    static func parseEndpoint(_ raw: String) throws -> ParsedEndpoint? {
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+
+        var scheme = "https"
+        if let separator = text.range(of: "://") {
+            let given = String(text[text.startIndex..<separator.lowerBound]).lowercased()
+            guard given == "https" || given == "http" else {
+                throw UploadError.invalidConfiguration(
+                    "Endpoint scheme has to be https or http: \(raw)")
+            }
+            scheme = given
+            text = String(text[separator.upperBound...])
+        }
+
+        while text.hasSuffix("/") { text.removeLast() }
+        guard !text.isEmpty else {
+            throw UploadError.invalidConfiguration("Endpoint has no host: \(raw)")
+        }
+        guard !text.contains("/") else {
+            throw UploadError.invalidConfiguration(
+                "Endpoint has to be a host with no path: \(raw)")
+        }
+        guard text.allSatisfy(Self.isHostCharacter) else {
+            throw UploadError.invalidConfiguration(
+                "Endpoint has characters that cannot appear in a host: \(raw)")
+        }
+        // Host names are case-insensitive and SigV4 signs them lower-cased.
+        return ParsedEndpoint(scheme: scheme, host: text.lowercased())
+    }
+
+    private static func isHostCharacter(_ character: Character) -> Bool {
+        guard character.isASCII else { return false }
+        return character.isLetter || character.isNumber
+            || character == "." || character == "-" || character == ":"
+    }
+
+    /// The bucket name goes straight into a host name or a path, so anything
+    /// that would corrupt the canonical URI has to be refused before a
+    /// signature is computed over one path and the request sent to another.
+    ///
+    /// Deliberately narrow. Length and case are the service's rules to
+    /// enforce; rejecting a name some service happens to accept would be worse
+    /// than passing it along.
+    static func validateBucket(_ bucket: String) throws {
+        guard !bucket.isEmpty else {
+            throw UploadError.invalidConfiguration("Bucket name is empty.")
+        }
+        let unsafe: Set<Character> = ["/", "?", "#", "@", ":", "\\"]
+        guard !bucket.contains(where: { unsafe.contains($0) || $0.isWhitespace }) else {
+            throw UploadError.invalidConfiguration(
+                "Bucket name cannot contain whitespace or any of / ? # @ : \\ "
+                    + "— got \(bucket)")
+        }
     }
 
     func publicURL(for key: String) throws -> URL {

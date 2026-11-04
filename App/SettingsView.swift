@@ -210,6 +210,8 @@ private struct PipelineTab: View {
     @Default(.s3KeyPrefix)         var s3KeyPrefix
     @Default(.s3PublicURLTemplate) var s3PublicURLTemplate
     @Default(.s3PathStyle)         var s3PathStyle
+    @Default(.s3Endpoint)          var s3Endpoint
+    @Default(.s3ProviderID)        var s3ProviderID
     @Default(.customHTTPMethod)       var customHTTPMethod
     @Default(.customHTTPURL)          var customHTTPURL
     @Default(.customHTTPFileField)    var customHTTPFileField
@@ -244,6 +246,22 @@ private struct PipelineTab: View {
     private let postSaveTasks: [AfterCaptureOption]  = [.revealInFinder, .copyFilePath, .openInViewer]
     private let notifyTasks: [AfterCaptureOption]    = [.showNotification]
     private let imageTasks: [AfterCaptureOption]     = [.ocr, .autoRedactPII, .watermark, .imageBorder, .print, .pinToScreen]
+
+    /// The chosen provider, or "other" when the stored value is from a newer
+    /// build than this one.
+    private var s3Provider: S3Provider {
+        S3Provider(rawValue: s3ProviderID) ?? .custom
+    }
+
+    /// Fills in what the service dictates and leaves the rest alone.  Region
+    /// is only overwritten when the provider actually pins it, so switching
+    /// provider does not wipe a region the user typed.
+    private func applyS3Provider(_ provider: S3Provider) {
+        s3ProviderID = provider.rawValue
+        s3PathStyle = provider.prefersPathStyle
+        if !provider.usesEndpoint { s3Endpoint = "" }
+        if !provider.defaultRegion.isEmpty { s3Region = provider.defaultRegion }
+    }
 
     var body: some View {
         Form {
@@ -377,6 +395,23 @@ private struct PipelineTab: View {
 
             if options.contains(.uploadToS3) {
                 Section {
+                    Picker("Service", selection: Binding(
+                        get: { s3Provider },
+                        set: { applyS3Provider($0) }
+                    )) {
+                        ForEach(S3Provider.allCases, id: \.self) { provider in
+                            Text(provider.displayName).tag(provider)
+                        }
+                    }
+                    if s3Provider.usesEndpoint {
+                        LabeledContent("Endpoint") {
+                            TextField(s3Provider.endpointPlaceholder, text: $s3Endpoint)
+                                .textFieldStyle(.roundedBorder)
+                                .fontDesign(.monospaced)
+                        }
+                    }
+                    Text(s3Provider.note)
+                        .font(.caption).foregroundStyle(.secondary)
                     LabeledContent("Bucket") {
                         TextField("my-screenshots", text: $s3Bucket)
                             .textFieldStyle(.roundedBorder)
@@ -409,6 +444,7 @@ private struct PipelineTab: View {
                             let cfg = S3Uploader.Config(
                                 bucket: s3Bucket, region: s3Region,
                                 accessKeyID: s3AccessKeyID, secretAccessKey: s3SecretAccessKey,
+                                endpoint: s3Endpoint,
                                 keyPrefix: s3KeyPrefix, publicURLTemplate: s3PublicURLTemplate,
                                 pathStyle: s3PathStyle)
                             Task {
@@ -423,9 +459,9 @@ private struct PipelineTab: View {
                         .disabled(s3Bucket.isEmpty || s3AccessKeyID.isEmpty || s3TestState == .testing)
                         ConnectionTestBadge(state: s3TestState)
                     }
-                    Text("Needs s3:PutObject permission. Leave Public URL blank to use the default S3 HTTPS URL.")
+                    Text("Needs s3:PutObject permission. Leave Public URL blank to use the service's own HTTPS URL.")
                         .font(.caption).foregroundStyle(.secondary)
-                } header: { Text("Amazon S3 Settings") }
+                } header: { Text("S3 Settings") }
             }
 
             if options.contains(.uploadCustomHTTP) {

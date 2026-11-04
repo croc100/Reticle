@@ -362,6 +362,7 @@ final class CaptureCoordinator: ObservableObject {
                         region: Defaults[.s3Region].isEmpty ? "us-east-1" : Defaults[.s3Region],
                         accessKeyID: keyID,
                         secretAccessKey: secret,
+                        endpoint: Defaults[.s3Endpoint],
                         keyPrefix: Defaults[.s3KeyPrefix],
                         publicURLTemplate: Defaults[.s3PublicURLTemplate],
                         pathStyle: Defaults[.s3PathStyle]
