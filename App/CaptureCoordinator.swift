@@ -79,7 +79,7 @@ final class CaptureCoordinator: ObservableObject {
         switch profile.captureMode {
         case "region":     await runOverlayCapture(profileDestinations: overrideDestinations)
         case "window":     await runWindowPicker(profileDestinations: overrideDestinations)
-        case "fullScreen": await runMainScreen(profileDestinations: overrideDestinations)
+        case "fullScreen": await runCurrentScreen(profileDestinations: overrideDestinations)
         default:           await runOverlayCapture(profileDestinations: overrideDestinations)
         }
     }
