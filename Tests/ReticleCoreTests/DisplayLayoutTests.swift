@@ -163,4 +163,72 @@ final class DisplayLayoutTests: XCTestCase {
         // (130, 130) is nearer the primary.
         XCTAssertEqual(sut.display(containing: CGPoint(x: 130, y: 130)), primaryID)
     }
+
+    // MARK: - Bounding box
+
+    func testBoundsOfASingleDisplayIsItsFrame() {
+        XCTAssertEqual(layout(primary).bounds, primary.frame)
+    }
+
+    func testBoundsOfAnEmptyLayoutIsZero() {
+        XCTAssertEqual(DisplayLayout(displays: [], primary: primaryID).bounds, .zero)
+    }
+
+    func testBoundsSpanDisplaysSideBySide() {
+        let right = DisplayLayout.Display(
+            displayID: secondaryID,
+            frame: CGRect(x: 1920, y: 0, width: 1920, height: 1080))
+        XCTAssertEqual(layout(primary, right).bounds,
+                       CGRect(x: 0, y: 0, width: 3840, height: 1080))
+    }
+
+    /// A display left of or below the primary has a negative origin, so the
+    /// bounding box does too — and the placements below are measured from it.
+    func testBoundsSpanANegativeOrigin() {
+        let left = DisplayLayout.Display(
+            displayID: secondaryID,
+            frame: CGRect(x: -1920, y: 0, width: 1920, height: 1080))
+        XCTAssertEqual(layout(primary, left).bounds,
+                       CGRect(x: -1920, y: 0, width: 3840, height: 1080))
+    }
+
+    /// Displays are rarely aligned in practice: a taller one beside a shorter
+    /// one usually hangs off both ends.
+    func testBoundsSpanAStaggeredLayout() {
+        let bigger = DisplayLayout.Display(
+            displayID: secondaryID,
+            frame: CGRect(x: 1920, y: -200, width: 2560, height: 1440))
+        XCTAssertEqual(layout(primary, bigger).bounds,
+                       CGRect(x: 0, y: -200, width: 4480, height: 1440))
+    }
+
+    // MARK: - Placement within the bounding box
+
+    func testPlacementIsMeasuredFromTheBoundingBox() {
+        let left = DisplayLayout.Display(
+            displayID: secondaryID,
+            frame: CGRect(x: -1920, y: 0, width: 1920, height: 1080))
+        let sut = layout(primary, left)
+
+        XCTAssertEqual(sut.placement(of: primaryID),
+                       CGRect(x: 1920, y: 0, width: 1920, height: 1080))
+        XCTAssertEqual(sut.placement(of: secondaryID),
+                       CGRect(x: 0, y: 0, width: 1920, height: 1080))
+    }
+
+    func testPlacementOfAStaggeredLayout() {
+        let bigger = DisplayLayout.Display(
+            displayID: secondaryID,
+            frame: CGRect(x: 1920, y: -200, width: 2560, height: 1440))
+        let sut = layout(primary, bigger)
+
+        XCTAssertEqual(sut.placement(of: primaryID),
+                       CGRect(x: 0, y: 200, width: 1920, height: 1080))
+        XCTAssertEqual(sut.placement(of: secondaryID),
+                       CGRect(x: 1920, y: 0, width: 2560, height: 1440))
+    }
+
+    func testPlacementOfAnUnknownDisplayIsNil() {
+        XCTAssertNil(layout(primary).placement(of: thirdID))
+    }
 }

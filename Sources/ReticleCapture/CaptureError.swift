@@ -6,6 +6,8 @@ public enum CaptureError: Error, LocalizedError {
     case invalidFrame
     case timeout
     case streamFailed(underlying: Error)
+    /// Several displays could not be laid out into one image.
+    case compositeFailed
 
     public var errorDescription: String? {
         switch self {
@@ -17,6 +19,9 @@ public enum CaptureError: Error, LocalizedError {
             return "ScreenCaptureKit delivered a frame that could not be decoded."
         case .timeout:
             return "Timed out waiting for the first frame from ScreenCaptureKit."
+        case .compositeFailed:
+            return "Could not combine the connected displays into one image. "
+                 + "The combined size may be too large for available memory."
         case .streamFailed(let error):
             return "The capture stream stopped unexpectedly: \(error.localizedDescription)"
         }

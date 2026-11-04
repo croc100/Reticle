@@ -26,7 +26,7 @@ struct ReticleApp: App {
         AutoCaptureManager.shared.captureAction = { [coord] mode in
             switch mode {
             case .activeScreen: coord.captureCurrentScreen()
-            case .fullScreen:   coord.captureMainScreen()
+            case .fullScreen:   coord.captureAllScreens()
             case .lastRegion:   coord.captureLastRegion()
             }
         }

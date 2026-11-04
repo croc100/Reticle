@@ -35,7 +35,7 @@ final class CaptureCoordinator: ObservableObject {
 
     func captureWithOverlay()                   { Task { await runOverlayCapture()           } }
     func captureCurrentScreen()                 { Task { await runCurrentScreen()            } }
-    func captureMainScreen()                    { Task { await runMainScreen()               } }
+    func captureAllScreens()                    { Task { await runAllScreens()               } }
     func captureLastRegion()                    { Task { await runLastRegion()               } }
     func captureWindowPicker()                  { Task { await runWindowPicker()             } }
     func captureActiveWindow()                  { Task { await runActiveWindow()             } }
@@ -141,9 +141,48 @@ final class CaptureCoordinator: ObservableObject {
                          profileDestinations: profileDestinations)
     }
 
-    /// Captures the primary display, wherever the pointer happens to be.
-    private func runMainScreen(profileDestinations: [String]? = nil) async {
-        await runDisplay(id: CGMainDisplayID(), profileDestinations: profileDestinations)
+    /// Captures every connected display, laid out as they are arranged, into
+    /// one image.
+    ///
+    /// The canvas is the bounding box of the arrangement, so a staggered or
+    /// L-shaped layout leaves black where no display is.  That is what "all
+    /// displays" has to mean for a single rectangular image.
+    ///
+    /// Composited at the highest scale factor present: upscaling a 1x display
+    /// loses nothing that was there, while flattening everything to 1x would
+    /// throw away half the detail of a Retina one.
+    ///
+    /// Frames come from ``DisplayLayout``, which reads them from `NSScreen` and
+    /// pairs them to captures by display ID.  Deliberately not from
+    /// `SCDisplay.frame`: two comments in this project disagree about which
+    /// coordinate space that is in, and laying displays out is exactly where
+    /// getting it wrong would show.
+    private func runAllScreens(profileDestinations: [String]? = nil) async {
+        do {
+            await applyDelay()
+            let (displays, _) = try await provider.fetchContent()
+            guard !displays.isEmpty else { return }
+
+            let layout = DisplayLayout.current
+            let bounds = layout.bounds
+            guard !bounds.isEmpty else { return }
+
+            var tiles: [DisplayCompositor.Tile] = []
+            var scale: CGFloat = 1
+            for display in displays {
+                guard let placement = layout.placement(of: display.displayID) else { continue }
+                let shot = try await capturer.capture(display: display)
+                tiles.append(DisplayCompositor.Tile(placement: placement, image: shot.image))
+                scale = max(scale, shot.scaleFactor)
+            }
+
+            let image = try DisplayCompositor.composite(
+                tiles: tiles, size: bounds.size, scale: scale)
+            await finalize(image: image,
+                           sourceRect: bounds,
+                           scaleFactor: scale,
+                           profileDestinations: profileDestinations)
+        } catch { showError(error) }
     }
 
     private func runDisplay(

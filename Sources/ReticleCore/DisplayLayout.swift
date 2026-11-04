@@ -40,6 +40,35 @@ public struct DisplayLayout: Sendable, Equatable {
         self.primary = primary
     }
 
+    /// The rectangle every display fits inside, in AppKit global screen
+    /// coordinates.  Empty when there are no displays.
+    ///
+    /// Displays need not tile the plane, so this bounding box can cover area
+    /// that no display occupies — an L-shaped or staggered arrangement leaves
+    /// corners with nothing in them.
+    public var bounds: CGRect {
+        guard let first = displays.first?.frame else { return .zero }
+        return displays.dropFirst().reduce(first) { $0.union($1.frame) }
+    }
+
+    /// Where `displayID` sits inside ``bounds``, measured from the bounding
+    /// box's bottom-left corner.
+    ///
+    /// A bitmap context is y-up with its origin at the bottom-left, and so is
+    /// AppKit's screen space, so this rect can be drawn into one directly.
+    /// No flip — flipping the CTM would mirror the content of everything drawn
+    /// into it, which is the bug ``ScrollCapturer`` used to have.
+    public func placement(of displayID: CGDirectDisplayID) -> CGRect? {
+        guard let display = displays.first(where: { $0.displayID == displayID }) else {
+            return nil
+        }
+        let origin = bounds.origin
+        return CGRect(x: display.frame.minX - origin.x,
+                      y: display.frame.minY - origin.y,
+                      width: display.frame.width,
+                      height: display.frame.height)
+    }
+
     /// The display `point` falls on, in AppKit global screen coordinates.
     ///
     /// `CGRect.contains` excludes the max edges, so two displays sharing a

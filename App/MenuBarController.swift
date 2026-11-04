@@ -30,6 +30,10 @@ struct MenuBarMenuView: View {
             coordinator.captureCurrentScreen()
         }
 
+        if NSScreen.screens.count > 1 {
+            Button("Capture All Screens") { coordinator.captureAllScreens() }
+        }
+
         // Per-monitor capture submenu (populated from connected NSScreens)
         Menu("Capture Screen") {
             ForEach(Array(NSScreen.screens.enumerated()), id: \.offset) { idx, screen in

@@ -224,11 +224,8 @@ public enum AutoCaptureMode: String, CaseIterable, Codable, Sendable, Defaults.S
 
     public var title: String {
         switch self {
-        // "All Displays" was never implemented: this captured the primary
-        // display and nothing else.  Compositing every display into one image
-        // is a separate piece of work, so the label says what it does.
         case .activeScreen: return "Screen Under Pointer"
-        case .fullScreen:   return "Main Display"
+        case .fullScreen:   return "Full Screen (All Displays)"
         case .lastRegion:   return "Last Region"
         }
     }
