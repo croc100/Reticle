@@ -96,14 +96,41 @@ public struct NameParser: @unchecked Sendable {
             .replacingOccurrences(of: "%height%", with: imageHeight > 0 ? String(imageHeight) : "")
 
         // ── System / app ─────────────────────────────────────────────
+        // These four come from outside the app — an app's display name, the account
+        // name, the machine name — so they are sanitised before being substituted in.
+        // Literal separators the user typed into the pattern are left alone, since a
+        // pattern is allowed to describe sub-folders.
         let pn = processName.isEmpty ? (activeAppName() ?? "unknown") : processName
+        let userName = ProcessInfo.processInfo.environment["USER"] ?? NSUserName()
+        let computerName = Host.current().localizedName ?? ProcessInfo.processInfo.hostName
         result = result
-            .replacingOccurrences(of: "%app%",  with: pn)
-            .replacingOccurrences(of: "%pn%",   with: pn)
-            .replacingOccurrences(of: "%un%",   with: ProcessInfo.processInfo.environment["USER"] ?? NSUserName())
-            .replacingOccurrences(of: "%cn%",   with: Host.current().localizedName ?? ProcessInfo.processInfo.hostName)
+            .replacingOccurrences(of: "%app%",  with: Self.sanitized(pn))
+            .replacingOccurrences(of: "%pn%",   with: Self.sanitized(pn))
+            .replacingOccurrences(of: "%un%",   with: Self.sanitized(userName))
+            .replacingOccurrences(of: "%cn%",   with: Self.sanitized(computerName))
 
         return result
+    }
+
+    // MARK: - Sanitising
+
+    /// Makes an externally supplied value safe to drop into a single path component.
+    ///
+    /// A `/` would silently add a directory level that does not exist, so the write fails
+    /// and the capture is lost; `:` is the same separator seen from the other side of the
+    /// Cocoa/POSIX divide; and a value that reduces to `.` or `..` would point at a
+    /// directory rather than name a file.
+    static func sanitized(_ value: String) -> String {
+        var cleaned = value
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .replacingOccurrences(of: "\0", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if cleaned.isEmpty || cleaned == "." || cleaned == ".." {
+            cleaned = "unknown"
+        }
+        return cleaned
     }
 
     // MARK: - Helpers

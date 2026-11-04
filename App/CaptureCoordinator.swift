@@ -258,10 +258,16 @@ final class CaptureCoordinator: ObservableObject {
             } else {
                 optSet = Set(globalOptions)
             }
-            // Apply static masks before pipeline
+            // Apply static masks before pipeline. Masks are stored in absolute screen
+            // points, while `image` starts at `sourceRect.origin` — a region or window
+            // capture, or any capture off a secondary display, is not anchored at the
+            // screen origin — so the renderer needs that origin to line the two up.
             let masks = Defaults[.staticMasks].filter(\.enabled)
             let maskedImage = masks.isEmpty ? image
-                : (try? maskRenderer.render(image: image, masks: masks, scaleFactor: scaleFactor)) ?? image
+                : (try? maskRenderer.render(image: image,
+                                            masks: masks,
+                                            scaleFactor: scaleFactor,
+                                            sourceOrigin: sourceRect.origin)) ?? image
 
             // Ordered options array (for tasks that iterate in order)
             let options = AfterCaptureOption.allCases.filter { optSet.contains($0) }
