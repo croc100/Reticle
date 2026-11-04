@@ -34,9 +34,11 @@ final class CaptureCoordinator: ObservableObject {
     // MARK: - Public actions
 
     func captureWithOverlay()                   { Task { await runOverlayCapture()           } }
-    func captureFullScreen()                    { Task { await runFullScreen()               } }
+    func captureCurrentScreen()                 { Task { await runCurrentScreen()            } }
+    func captureMainScreen()                    { Task { await runMainScreen()               } }
     func captureLastRegion()                    { Task { await runLastRegion()               } }
     func captureWindowPicker()                  { Task { await runWindowPicker()             } }
+    func captureActiveWindow()                  { Task { await runActiveWindow()             } }
     func captureSavedRegion(id: UUID)           { Task { await runSavedRegion(id: id)        } }
     func captureScroll()                        { Task { await runScrollCapture()            } }
     func captureDisplay(displayID: CGDirectDisplayID) { Task { await runDisplayCapture(displayID: displayID) } }
@@ -78,7 +80,7 @@ final class CaptureCoordinator: ObservableObject {
         switch profile.captureMode {
         case "region":     await runOverlayCapture(profileDestinations: overrideDestinations)
         case "window":     await runWindowPicker(profileDestinations: overrideDestinations)
-        case "fullScreen": await runFullScreen(profileDestinations: overrideDestinations)
+        case "fullScreen": await runCurrentScreen(profileDestinations: overrideDestinations)
         default:           await runOverlayCapture(profileDestinations: overrideDestinations)
         }
     }
@@ -124,20 +126,37 @@ final class CaptureCoordinator: ObservableObject {
     // MARK: - Per-display capture
 
     private func runDisplayCapture(displayID: CGDirectDisplayID) async {
+        await runDisplay(id: displayID)
+    }
+
+    /// Captures the display the pointer is on.
+    ///
+    /// What the screenshot hotkey does.  It used to capture `CGMainDisplayID()`
+    /// regardless of where the pointer was, so on any multi-monitor setup the
+    /// hotkey photographed a screen the user was not looking at.  Timed capture
+    /// came through the same call, which is why its default mode — the one
+    /// labelled "Active Screen" — had never looked at the pointer either.
+    private func runCurrentScreen(profileDestinations: [String]? = nil) async {
+        await runDisplay(id: DisplayLayout.displayUnderPointer(),
+                         profileDestinations: profileDestinations)
+    }
+
+    /// Captures the primary display, wherever the pointer happens to be.
+    private func runMainScreen(profileDestinations: [String]? = nil) async {
+        await runDisplay(id: CGMainDisplayID(), profileDestinations: profileDestinations)
+    }
+
+    private func runDisplay(
+        id displayID: CGDirectDisplayID,
+        profileDestinations: [String]? = nil
+    ) async {
         do {
             await applyDelay()
             let shot = try await capturer.capture(mode: .fullScreen(displayID: displayID))
-            await finalize(image: shot.image, sourceRect: shot.sourceRect, scaleFactor: shot.scaleFactor)
-        } catch { showError(error) }
-    }
-
-    // MARK: - Full-screen flow
-
-    private func runFullScreen(profileDestinations: [String]? = nil) async {
-        do {
-            await applyDelay()
-            let shot = try await capturer.capture(mode: .fullScreen(displayID: CGMainDisplayID()))
-            await finalize(image: shot.image, sourceRect: shot.sourceRect, scaleFactor: shot.scaleFactor, profileDestinations: profileDestinations)
+            await finalize(image: shot.image,
+                           sourceRect: shot.sourceRect,
+                           scaleFactor: shot.scaleFactor,
+                           profileDestinations: profileDestinations)
         } catch { showError(error) }
     }
 
@@ -153,6 +172,33 @@ final class CaptureCoordinator: ObservableObject {
             await applyDelay()
             let shot = try await capturer.capture(mode: .region(stored.cgRect))
             await finalize(image: shot.image, sourceRect: shot.sourceRect, scaleFactor: shot.scaleFactor)
+        } catch { showError(error) }
+    }
+
+    // MARK: - Active Window
+
+    /// Captures the window you are working in, with no picker.
+    ///
+    /// The frontmost window of the frontmost application, decided from
+    /// ownership and stacking order alone — see ``ActiveWindowChooser``, which
+    /// holds the rules and is deliberately free of coordinates.
+    ///
+    /// The delay runs first, so a delayed capture resolves the window *after*
+    /// the user has finished setting the screen up rather than before.
+    private func runActiveWindow(profileDestinations: [String]? = nil) async {
+        do {
+            await applyDelay()
+            let (_, scWindows) = try await provider.fetchContent()
+            guard let windowID = ActiveWindowLocator.choose(from: scWindows) else {
+                showError(CaptureError.noMatchingContent)
+                return
+            }
+            let shot = try await capturer.capture(mode: .window(windowID))
+            Defaults[.lastCaptureRect] = StoredRect(shot.sourceRect)
+            await finalize(image: shot.image,
+                           sourceRect: shot.sourceRect,
+                           scaleFactor: shot.scaleFactor,
+                           profileDestinations: profileDestinations)
         } catch { showError(error) }
     }
 

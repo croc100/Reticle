@@ -65,6 +65,10 @@ public extension Defaults.Keys {
     static let lastRegionHotkeyMods      = Key<UInt32>("lastRegionHotkeyMods",      default: 0)
     static let windowPickerHotkeyKeyCode = Key<UInt32>("windowPickerHotkeyKeyCode", default: 0)
     static let windowPickerHotkeyMods    = Key<UInt32>("windowPickerHotkeyMods",    default: 0)
+    // Unassigned by default, like the two above: picking a combination for the
+    // user risks colliding with one they or the system already use.
+    static let activeWindowHotkeyKeyCode = Key<UInt32>("activeWindowHotkeyKeyCode", default: 0)
+    static let activeWindowHotkeyMods    = Key<UInt32>("activeWindowHotkeyMods",    default: 0)
 
     // MARK: Capture behaviour
 
@@ -220,8 +224,11 @@ public enum AutoCaptureMode: String, CaseIterable, Codable, Sendable, Defaults.S
 
     public var title: String {
         switch self {
-        case .activeScreen: return "Active Screen"
-        case .fullScreen:   return "Full Screen (All Displays)"
+        // "All Displays" was never implemented: this captured the primary
+        // display and nothing else.  Compositing every display into one image
+        // is a separate piece of work, so the label says what it does.
+        case .activeScreen: return "Screen Under Pointer"
+        case .fullScreen:   return "Main Display"
         case .lastRegion:   return "Last Region"
         }
     }

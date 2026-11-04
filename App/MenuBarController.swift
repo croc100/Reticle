@@ -17,6 +17,8 @@ struct MenuBarMenuView: View {
     @Default(.regionHotkeyMods)       var regionMods
     @Default(.fullscreenHotkeyKeyCode) var fullCode
     @Default(.fullscreenHotkeyMods)   var fullMods
+    @Default(.activeWindowHotkeyKeyCode) var activeWinCode
+    @Default(.activeWindowHotkeyMods)    var activeWinMods
     @ObservedObject private var autoCapture = AutoCaptureManager.shared
 
     var body: some View {
@@ -24,8 +26,8 @@ struct MenuBarMenuView: View {
         Button(hotkeyLabel("Capture Region", keyCode: regionCode, mods: regionMods)) {
             coordinator.captureWithOverlay()
         }
-        Button(hotkeyLabel("Capture Full Screen", keyCode: fullCode, mods: fullMods)) {
-            coordinator.captureFullScreen()
+        Button(hotkeyLabel("Capture Current Screen", keyCode: fullCode, mods: fullMods)) {
+            coordinator.captureCurrentScreen()
         }
 
         // Per-monitor capture submenu (populated from connected NSScreens)
@@ -40,6 +42,9 @@ struct MenuBarMenuView: View {
             }
         }
 
+        Button(hotkeyLabel("Capture Active Window", keyCode: activeWinCode, mods: activeWinMods)) {
+            coordinator.captureActiveWindow()
+        }
         Button("Capture Window…")            { coordinator.captureWindowPicker() }
         Button("Scroll Capture…")            { coordinator.captureScroll() }
 
