@@ -18,7 +18,7 @@ const base = import.meta.env.BASE_URL;
         'Enable "Upload" in After Capture settings.',
       ].map((s, i) => (
         <li class="flex gap-3 text-sm text-text-secondary">
-          <span class="text-accent font-bold flex-shrink-0">{i + 1}.</span> {s}
+          <span class="text-accent font-bold shrink-0">{i + 1}.</span> {s}
         </li>
       ))}
     </ol>
@@ -38,7 +38,7 @@ const base = import.meta.env.BASE_URL;
         ['ACL', 'Set to public-read if you want direct links. Leave blank if you use CloudFront or Cloudflare as a CDN front.'],
       ].map(([label, note]) => (
         <div class="flex gap-3 items-start p-3 bg-surface-raised border border-surface-border rounded-lg">
-          <span class="text-xs font-mono text-accent w-28 flex-shrink-0 mt-0.5">{label}</span>
+          <span class="text-xs font-mono text-accent w-28 shrink-0 mt-0.5">{label}</span>
           <span class="text-sm text-text-secondary">{note}</span>
         </div>
       ))}

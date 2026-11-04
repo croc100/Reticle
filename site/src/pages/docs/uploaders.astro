@@ -28,7 +28,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
         ['responsePath', 'A dot-path into the JSON response to extract the public URL. $ refers to the root.'],
       ].map(([field, desc]) => (
         <div class="flex gap-3 items-start p-3 bg-surface-raised border border-surface-border rounded-lg">
-          <code class="text-xs font-mono text-accent bg-black/40 px-2 py-1 rounded flex-shrink-0">{field}</code>
+          <code class="text-xs font-mono text-accent bg-black/40 px-2 py-1 rounded-sm shrink-0">{field}</code>
           <span class="text-sm text-text-secondary">{desc}</span>
         </div>
       ))}
@@ -57,7 +57,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
       ].map(ex => (
         <div class="p-4 bg-surface-raised border border-surface-border rounded-xl">
           <div class="text-sm font-medium text-text-primary mb-2">{ex.label}</div>
-          <div class="text-xs font-mono bg-black/40 rounded px-3 py-2 text-text-secondary mb-2">{ex.response}</div>
+          <div class="text-xs font-mono bg-black/40 rounded-sm px-3 py-2 text-text-secondary mb-2">{ex.response}</div>
           <div class="text-xs text-text-secondary">responsePath: <code class="text-accent">{ex.path}</code></div>
         </div>
       ))}
@@ -75,7 +75,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
         'Set it as your active destination and enable Upload in After Capture.',
       ].map((s, i) => (
         <li class="flex gap-3 text-sm text-text-secondary">
-          <span class="text-accent font-bold flex-shrink-0">{i + 1}.</span> {s}
+          <span class="text-accent font-bold shrink-0">{i + 1}.</span> {s}
         </li>
       ))}
     </ol>
